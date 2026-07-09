@@ -1,3 +1,13 @@
-const menuToggle=document.querySelector('.menu-toggle');const nav=document.querySelector('.main-nav');menuToggle.addEventListener('click',()=>nav.classList.toggle('open'));
-const revealEls=document.querySelectorAll('.reveal');const observer=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('visible');}})},{threshold:.12});revealEls.forEach(el=>observer.observe(el));
-const counters=document.querySelectorAll('[data-count]');let done=false;function animateCounters(){if(done)return;done=true;counters.forEach(counter=>{const target=+counter.dataset.count;let current=0;const step=Math.max(1,Math.ceil(target/55));const timer=setInterval(()=>{current+=step;if(current>=target){current=target;clearInterval(timer)}counter.textContent=current+'+'},24)})}const statObs=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting))animateCounters()},{threshold:.35});const stats=document.querySelector('.stats');if(stats)statObs.observe(stats);
+const menuToggle = document.querySelector('.menu-toggle');
+const nav = document.querySelector('.nav');
+menuToggle.addEventListener('click', () => nav.classList.toggle('open'));
+document.querySelectorAll('.nav a').forEach(link => link.addEventListener('click', () => nav.classList.remove('open')));
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) entry.target.classList.add('visible');
+  });
+}, { threshold: 0.12 });
+document.querySelectorAll('section, .card, .image-card, .stat-card').forEach(el => {
+  el.classList.add('reveal');
+  observer.observe(el);
+});
