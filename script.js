@@ -22,7 +22,7 @@ document.getElementById("year").textContent=new Date().getFullYear();
 document.getElementById("contactForm").addEventListener("submit",e=>{
   e.preventDefault();
   const f=new FormData(e.currentTarget);
-  const to="contact@alpes-ex.fr"; // À modifier avant publication
+  const to="alpes.ex.asm@gmail.com";
   const subject=encodeURIComponent("Demande de contact — "+(f.get("company")||f.get("name")));
   const body=encodeURIComponent(
     "Nom : "+f.get("name")+"\n"+
