@@ -1,0 +1,21 @@
+{
+  "name": "ALPES'Ex",
+  "short_name": "ALPES'Ex",
+  "description": "Pilotage de projets industriels — méthode ASM",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#11181d",
+  "theme_color": "#11181d",
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
