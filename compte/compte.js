@@ -7,6 +7,7 @@ function showPanel(id){
 }
 tabs.forEach(tab=>tab.addEventListener('click',()=>showPanel(tab.dataset.panel)));
 document.querySelectorAll('[data-open-reset]').forEach(button=>button.addEventListener('click',()=>showPanel('reset-panel')));
+document.querySelectorAll('[data-open-register]').forEach(button=>button.addEventListener('click',()=>showPanel('register-panel')));
 document.querySelector('.back-to-login').addEventListener('click',()=>showPanel('login-panel'));
 document.querySelectorAll('.show-password').forEach(button=>button.addEventListener('click',()=>{
   const input=button.parentElement.querySelector('input'),visible=input.type==='text';input.type=visible?'password':'text';button.textContent=visible?'Afficher':'Masquer';
