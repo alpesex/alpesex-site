@@ -7,7 +7,6 @@ function showPanel(id){
 }
 tabs.forEach(tab=>tab.addEventListener('click',()=>showPanel(tab.dataset.panel)));
 document.querySelectorAll('[data-open-reset]').forEach(button=>button.addEventListener('click',()=>showPanel('reset-panel')));
-document.querySelectorAll('[data-open-register]').forEach(button=>button.addEventListener('click',()=>showPanel('register-panel')));
 document.querySelector('.back-to-login').addEventListener('click',()=>showPanel('login-panel'));
 document.querySelectorAll('.show-password').forEach(button=>button.addEventListener('click',()=>{
   const input=button.parentElement.querySelector('input'),visible=input.type==='text';input.type=visible?'password':'text';button.textContent=visible?'Afficher':'Masquer';
@@ -36,3 +35,5 @@ document.querySelector('#register-form').addEventListener('submit',event=>{
 });
 document.querySelector('#reset-form').addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget;submit(form,'../api/auth/password/request',values(form),'Si cette adresse correspond à un compte, un lien temporaire vient d’être envoyé.')});
 document.querySelector('#year').textContent=new Date().getFullYear();
+
+const requestedPlan=new URLSearchParams(location.search).get('offre');if(requestedPlan){showPanel('register-panel');const messageBox=document.querySelector('#register-form .form-message');messageBox.textContent='Offre sélectionnée : '+requestedPlan+'. Créez votre entreprise pour poursuivre.';messageBox.className='form-message visible success'}
