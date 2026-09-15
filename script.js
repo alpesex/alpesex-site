@@ -19,7 +19,7 @@ document.querySelectorAll("[data-count]").forEach(el=>counterIO.observe(el));
 
 document.getElementById("year").textContent=new Date().getFullYear();
 
-document.getElementById("contactForm").addEventListener("submit",e=>{
+document.getElementById("contactForm")?.addEventListener("submit",e=>{
   e.preventDefault();
   const f=new FormData(e.currentTarget);
   const to="contact@alpes-ex.fr"; // À modifier avant publication
