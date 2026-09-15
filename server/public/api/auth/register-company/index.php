@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use AlpesEx\Portal\Auth\RegisterCompany;
 use AlpesEx\Portal\Database;
+use AlpesEx\Portal\Security\RateLimiter;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
