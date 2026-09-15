@@ -27,3 +27,10 @@ document.querySelector('#logout').addEventListener('click',async()=>{
 });
 document.querySelectorAll('aside nav a').forEach(link=>link.addEventListener('click',()=>{document.querySelectorAll('aside nav a').forEach(item=>item.classList.remove('active'));link.classList.add('active')}));
 loadAccount();
+
+const offers={trial:{name:'Essai',price:0,included:{master:1,user:1,manager:1,direction:1}},discovery:{name:'Découverte',price:166,included:{master:1,user:3,manager:1,direction:1}},pro:{name:'Pro',price:459,included:{master:1,user:20,manager:1,direction:1}}},addonPrices={user:19,manager:39,direction:29};
+function currentOrder(){const selected=document.querySelector('input[name="offer"]:checked');if(!selected)return null;const extras={};document.querySelectorAll('[data-addon]').forEach(input=>{const quantity=Math.max(0,Math.min(999,Number.parseInt(input.value,10)||0));input.value=quantity;extras[input.dataset.addon]=quantity});const offer=offers[selected.value],extrasTotal=Object.entries(extras).reduce((total,[key,quantity])=>total+addonPrices[key]*quantity,0);return{offerKey:selected.value,offerName:offer.name,basePrice:offer.price,included:offer.included,extras,extrasTotal,total:offer.price+extrasTotal,currency:'EUR',billing:'monthly'}};
+function updateOrder(){const order=currentOrder(),total=document.querySelector('#order-total'),button=document.querySelector('#continue-order');if(!total||!button)return;total.textContent=order?order.total+' € HT/mois':'Sélectionnez une offre';button.disabled=!order}
+document.querySelectorAll('input[name="offer"],[data-addon]').forEach(input=>input.addEventListener('input',updateOrder));
+document.querySelector('#continue-order')?.addEventListener('click',()=>{const order=currentOrder();if(!order)return;sessionStorage.setItem('alpesexOrder',JSON.stringify(order));location.href='commande.html'});
+updateOrder();
