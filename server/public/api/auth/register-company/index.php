@@ -25,8 +25,16 @@ try {
     /** @var array{config: AlpesEx\Portal\Config, mailer: AlpesEx\Portal\Mail\Mailer} $services */
     $services = require $appDirectory . '/bootstrap.php';
 
+    $pdo = Database::connect($services['config']);
+    (new RateLimiter($pdo))->assertAllowed(
+        'register_company',
+        (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'),
+        5,
+        3600
+    );
+
     $registration = new RegisterCompany(
-        Database::connect($services['config']),
+        $pdo,
         $services['config'],
         $services['mailer']
     );
