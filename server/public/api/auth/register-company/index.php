@@ -50,7 +50,15 @@ try {
 } catch (RuntimeException $exception) {
     http_response_code(422);
     echo json_encode(['message' => $exception->getMessage()], JSON_UNESCAPED_UNICODE);
-} catch (Throwable) {
+} catch (Throwable $exception) {
+    $logDirectory = dirname(__DIR__, 4) . '/private';
+    if (is_dir($logDirectory) && is_writable($logDirectory)) {
+        error_log(
+            gmdate('c') . ' register-company ' . get_class($exception) . ': ' . $exception->getMessage() . PHP_EOL,
+            3,
+            $logDirectory . '/api-errors.log'
+        );
+    }
     http_response_code(500);
     echo json_encode(['message' => 'Une erreur interne empêche la création du compte.'], JSON_UNESCAPED_UNICODE);
 }
