@@ -7,7 +7,13 @@ function showPanel(id){
 }
 tabs.forEach(tab=>tab.addEventListener('click',()=>showPanel(tab.dataset.panel)));
 document.querySelectorAll('[data-open-reset]').forEach(button=>button.addEventListener('click',()=>showPanel('reset-panel')));
-document.querySelector('.back-to-login').addEventListener('click',()=>showPanel('login-panel'));
+document.querySelector('.back-to-login')?.addEventListener('click',()=>showPanel('login-panel'));
+
+document.querySelectorAll('.registration-type').forEach(button=>button.addEventListener('click',()=>{
+  document.querySelectorAll('.registration-type').forEach(item=>item.classList.toggle('active',item===button));
+  document.querySelectorAll('.registration-form').forEach(form=>{const active=form.id===button.dataset.registration;form.hidden=!active;form.classList.toggle('active',active)});
+}));
+
 document.querySelectorAll('.show-password').forEach(button=>button.addEventListener('click',()=>{
   const input=button.parentElement.querySelector('input'),visible=input.type==='text';input.type=visible?'password':'text';button.textContent=visible?'Afficher':'Masquer';
 }));
@@ -20,27 +26,33 @@ async function submit(form,endpoint,payload,success){
     const data=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(data.message||'La demande n’a pas pu être traitée.');
     message(form,data.message||success,'success');
-  }catch(error){
-    const unavailable=error instanceof TypeError;
-    message(form,unavailable?'Le portail est prêt, mais le service sécurisé de comptes n’est pas encore activé.':error.message);
-  }finally{button.disabled=false}
+    if(data.redirect)location.href=data.redirect;
+  }catch(error){message(form,error instanceof TypeError?'L’interface est prête, mais le service sécurisé de comptes doit encore être raccordé.':error.message)}
+  finally{button.disabled=false}
 }
-document.querySelector('#login-form').addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget;submit(form,'../api/auth/login',values(form),'Connexion réussie.')});
-document.querySelector('#register-form').addEventListener('submit',event=>{
+document.querySelector('#login-form')?.addEventListener('submit',event=>{
+  event.preventDefault();const form=event.currentTarget,data=values(form);
+  submit(form,'../api/auth/login',data,'Connexion réussie.');
+});
+document.querySelector('#company-form')?.addEventListener('submit',event=>{
   event.preventDefault();const form=event.currentTarget,data=values(form);
   if(data.password!==data.passwordConfirmation)return message(form,'Les deux mots de passe ne correspondent pas.');
-  const digits=value=>String(value||'').replace(/\D/g,'');
-  data.siren=digits(data.siren);data.siret=digits(data.siret);
+  const digits=value=>String(value||'').replace(/\D/g,'');data.siren=digits(data.siren);data.siret=digits(data.siret);
   if(data.country==='France'&&(data.siren.length!==9||data.siret.length!==14))return message(form,'Le SIREN doit contenir 9 chiffres et le SIRET 14 chiffres.');
-  if(data.siret&&data.siren&&data.siret.slice(0,9)!==data.siren)return message(form,'Le SIRET doit commencer par le SIREN de l’entreprise.');
+  if(data.siret.slice(0,9)!==data.siren)return message(form,'Le SIRET doit commencer par le SIREN de l’entreprise.');
   delete data.passwordConfirmation;data.firstAccountManager=true;data.marketing=Boolean(data.marketing);
-  submit(form,'../api/auth/register-company',data,'Un e-mail de confirmation vient de vous être envoyé.');
+  submit(form,'../api/auth/register-company',data,'Votre organisation est créée. Confirmez votre adresse e-mail.');
 });
-document.querySelector('#reset-form').addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget;submit(form,'../api/auth/password/request',values(form),'Si cette adresse correspond à un compte, un lien temporaire vient d’être envoyé.')});
+document.querySelector('#invited-form')?.addEventListener('submit',event=>{
+  event.preventDefault();const form=event.currentTarget,data=values(form);
+  if(data.password!==data.passwordConfirmation)return message(form,'Les deux mots de passe ne correspondent pas.');
+  if(!data.managerInvitation)return message(form,'Vous devez confirmer l’invitation du gestionnaire.');
+  delete data.passwordConfirmation;data.invitedByManager=true;
+  submit(form,'../api/auth/register-invited-user',data,'Votre compte est créé et rattaché à l’organisation.');
+});
+document.querySelector('#reset-form')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget;submit(form,'../api/auth/password/request',values(form),'Si cette adresse correspond à un compte, un lien temporaire vient d’être envoyé.')});
 document.querySelector('#year').textContent=new Date().getFullYear();
-
-const requestedPlan=new URLSearchParams(location.search).get('offre');if(requestedPlan){showPanel('register-panel');const messageBox=document.querySelector('#register-form .form-message');messageBox.textContent='Offre sélectionnée : '+requestedPlan+'. Créez votre entreprise pour poursuivre.';messageBox.className='form-message visible success'}
-
+const requestedPlan=new URLSearchParams(location.search).get('offre');if(requestedPlan){showPanel('register-panel');message(document.querySelector('#company-form'),'Offre sélectionnée : '+requestedPlan+'. Créez votre organisation pour poursuivre.','success')}
 const menuToggle=document.querySelector('.menu-toggle'),accountNav=document.querySelector('.site-header nav');
 menuToggle?.addEventListener('click',()=>{const open=accountNav.classList.toggle('open');menuToggle.setAttribute('aria-expanded',String(open))});
 accountNav?.querySelectorAll('a').forEach(link=>link.addEventListener('click',()=>accountNav.classList.remove('open')));
