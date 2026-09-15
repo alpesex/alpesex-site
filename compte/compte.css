@@ -15,3 +15,17 @@ select:focus{border-color:var(--copper);box-shadow:0 0 0 3px rgba(201,120,61,.16
 .manager-confirmation span{font-size:.78rem;line-height:1.45}
 .check a{color:var(--copper-dark);text-decoration:underline}
 @media(max-width:1050px){.site-header nav{display:none;position:absolute;top:84px;left:0;right:0;padding:20px;background:white;box-shadow:0 12px 30px rgba(15,23,42,.15)}.site-header nav.open{display:grid}.menu-toggle{display:block}}
+
+.profile-choice{grid-template-columns:1fr 1fr;padding:10px;gap:10px}
+.profile-choice legend{grid-column:1/-1}
+.profile-option{display:flex;align-items:flex-start;gap:10px;padding:13px;border:1px solid var(--line);border-radius:10px;cursor:pointer;background:white}
+.profile-option:has(input:checked){border-color:var(--copper);background:#fff7ed}
+.profile-option input{width:17px;height:17px;margin-top:3px}
+.profile-option span{display:grid;gap:3px}.profile-option small{font-weight:500}
+.registration-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:5px;margin-bottom:22px;border-radius:11px;background:#edf1f5}
+.registration-type{padding:11px;border:0;border-radius:8px;background:transparent;color:#64748b;font-weight:800;cursor:pointer}
+.registration-type.active{background:white;color:var(--navy);box-shadow:0 4px 12px rgba(15,23,42,.08)}
+.registration-form{display:grid;gap:17px}
+.invitation-note{display:grid;gap:5px;padding:14px;border-radius:9px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e4f85}
+.invitation-note span{font-size:.78rem;line-height:1.45}
+@media(max-width:560px){.profile-choice{grid-template-columns:1fr}.registration-switch{grid-template-columns:1fr}}
