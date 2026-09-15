@@ -68,6 +68,7 @@ try {
 
     echo json_encode([
         'message' => 'Connexion réussie. Bienvenue ' . $user['firstName'] . '.',
+        'redirect' => '../mon-compte/',
         'user' => [
             'firstName' => $user['firstName'],
             'lastName' => $user['lastName'],
