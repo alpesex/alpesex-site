@@ -23,12 +23,13 @@ document.getElementById("contactForm").addEventListener("submit",e=>{
   e.preventDefault();
   const f=new FormData(e.currentTarget);
   const to="contact@alpes-ex.fr"; // À modifier avant publication
-  const subject=encodeURIComponent("Demande de contact — "+(f.get("company")||f.get("name")));
+  const subject=encodeURIComponent("Demande ASM — "+f.get("requestType")+" — "+(f.get("company")||f.get("name")));
   const body=encodeURIComponent(
     "Nom : "+f.get("name")+"\n"+
     "Entreprise : "+f.get("company")+"\n"+
     "E-mail : "+f.get("email")+"\n"+
-    "Téléphone : "+f.get("phone")+"\n\n"+
+    "Téléphone : "+f.get("phone")+"\n"+
+    "Objet : "+f.get("requestType")+"\n\n"+
     "Message :\n"+f.get("message")
   );
   location.href=`mailto:${to}?subject=${subject}&body=${body}`;
