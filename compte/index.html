@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Connexion et création de votre espace entreprise ASM par ALPES'Ex.">
+  <meta name="theme-color" content="#0f172a">
+  <title>Espace ASM — ALPES'Ex</title>
+  <link rel="icon" href="../assets/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="compte.css">
+</head>
+<body>
+  <header class="account-header">
+    <a href="../index.html" class="brand" aria-label="Retour au site ALPES'Ex">
+      <img src="../assets/logo-alpesex.png" alt="ALPES'Ex">
+    </a>
+    <a href="../index.html" class="back-link">Retour au site</a>
+  </header>
+
+  <main>
+    <section class="account-intro">
+      <p class="eyebrow">ESPACE ENTREPRISE ASM</p>
+      <h1>Pilotez vos licences.<br><span>Maîtrisez vos accès.</span></h1>
+      <p>Retrouvez les licences ASM de votre entreprise, invitez vos collaborateurs et gérez votre abonnement depuis un espace sécurisé.</p>
+      <ul>
+        <li>Licence master réservée au gestionnaire</li>
+        <li>Licences utilisateur limitées à trois appareils</li>
+        <li>Documents ASM conservés sur votre propre serveur</li>
+      </ul>
+      <div class="security-note"><strong>Vos documents restent chez vous.</strong><br>Ce portail ne stocke que les comptes, abonnements et informations de licence.</div>
+    </section>
+
+    <section class="account-card" aria-labelledby="form-title">
+      <div class="tabs" role="tablist" aria-label="Accès au compte">
+        <button id="login-tab" class="tab active" type="button" role="tab" aria-selected="true" data-panel="login-panel">Connexion</button>
+        <button id="register-tab" class="tab" type="button" role="tab" aria-selected="false" data-panel="register-panel">Créer un compte</button>
+      </div>
+
+      <div id="login-panel" class="panel active" role="tabpanel" aria-labelledby="login-tab">
+        <p class="panel-kicker">Bienvenue</p>
+        <h2 id="form-title">Accéder à votre entreprise</h2>
+        <form id="login-form">
+          <label>Adresse e-mail
+            <input name="email" type="email" autocomplete="email" required>
+          </label>
+          <label>Mot de passe
+            <span class="password-field"><input name="password" type="password" autocomplete="current-password" minlength="12" required><button class="show-password" type="button" aria-label="Afficher le mot de passe">Afficher</button></span>
+          </label>
+          <div class="form-row"><label class="check"><input name="remember" type="checkbox"> Rester connecté</label><button class="text-button" type="button" data-open-reset>Mot de passe oublié ?</button></div>
+          <button class="primary" type="submit">Se connecter</button>
+          <p class="form-message" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+
+      <div id="register-panel" class="panel" role="tabpanel" aria-labelledby="register-tab" hidden>
+        <p class="panel-kicker">Nouvelle entreprise</p>
+        <h2>Créer votre espace ASM</h2>
+        <form id="register-form">
+          <label>Nom de la société
+            <input name="company" autocomplete="organization" maxlength="150" required>
+          </label>
+          <div class="two-columns">
+            <label>Prénom<input name="firstName" autocomplete="given-name" maxlength="80" required></label>
+            <label>Nom<input name="lastName" autocomplete="family-name" maxlength="80" required></label>
+          </div>
+          <label>Adresse e-mail professionnelle
+            <input name="email" type="email" autocomplete="email" required>
+          </label>
+          <label>Mot de passe
+            <span class="password-field"><input name="password" type="password" autocomplete="new-password" minlength="12" required><button class="show-password" type="button" aria-label="Afficher le mot de passe">Afficher</button></span>
+            <small>12 caractères minimum.</small>
+          </label>
+          <label>Confirmer le mot de passe
+            <input name="passwordConfirmation" type="password" autocomplete="new-password" minlength="12" required>
+          </label>
+          <label class="check emphasized"><input name="manager" type="checkbox"> Je serai le gestionnaire du compte de cette entreprise</label>
+          <p class="hint">Un collaborateur rejoint une entreprise uniquement depuis l’invitation envoyée par son gestionnaire.</p>
+          <label class="check"><input name="terms" type="checkbox" required> J’accepte les conditions d’utilisation et la politique de confidentialité.</label>
+          <label class="check"><input name="marketing" type="checkbox"> Je souhaite recevoir les actualités et offres d’ALPES’Ex.</label>
+          <button class="primary" type="submit">Créer mon entreprise</button>
+          <p class="form-message" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+
+      <div id="reset-panel" class="panel" role="tabpanel" hidden>
+        <button class="text-button back-to-login" type="button">← Retour à la connexion</button>
+        <p class="panel-kicker">Accès au compte</p>
+        <h2>Mot de passe oublié</h2>
+        <p class="hint">Saisissez votre adresse. Si un compte existe, un lien temporaire vous sera envoyé par notifications@alpes-ex.fr.</p>
+        <form id="reset-form">
+          <label>Adresse e-mail<input name="email" type="email" autocomplete="email" required></label>
+          <button class="primary" type="submit">Recevoir le lien</button>
+          <p class="form-message" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer><span>© <span id="year"></span> ALPES'Ex</span><a href="../mentions-legales.html">Mentions légales</a><a href="mailto:contact@alpes-ex.fr">Besoin d’aide ?</a></footer>
+  <script src="compte.js"></script>
+</body>
+</html>
