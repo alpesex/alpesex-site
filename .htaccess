@@ -1,0 +1,13 @@
+Options -Indexes
+RewriteEngine On
+
+# Les fichiers techniques restent téléchargeables uniquement par leur URL exacte.
+# Toute tentative d'ouverture ou d'exploration des répertoires est refusée.
+RewriteRule ^telechargements/?$ - [R=404,L]
+RewriteRule ^telechargements/asm/?$ - [R=404,L]
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(zip|exe|json|sig)$">
+    Header set X-Robots-Tag "noindex, nofollow, noarchive"
+  </FilesMatch>
+</IfModule>
