@@ -32,7 +32,7 @@ async function submit(form,endpoint,payload,success){
 }
 document.querySelector('#login-form')?.addEventListener('submit',event=>{
   event.preventDefault();const form=event.currentTarget,data=values(form);
-  submit(form,'../api/auth/login',data,'Connexion réussie.');
+  submit(form,'../api/auth/login/',data,'Connexion réussie.');
 });
 document.querySelector('#company-form')?.addEventListener('submit',event=>{
   event.preventDefault();const form=event.currentTarget,data=values(form);
@@ -41,16 +41,16 @@ document.querySelector('#company-form')?.addEventListener('submit',event=>{
   if(data.country==='France'&&(data.siren.length!==9||data.siret.length!==14))return message(form,'Le SIREN doit contenir 9 chiffres et le SIRET 14 chiffres.');
   if(data.siret.slice(0,9)!==data.siren)return message(form,'Le SIRET doit commencer par le SIREN de l’entreprise.');
   delete data.passwordConfirmation;data.firstAccountManager=true;data.marketing=Boolean(data.marketing);
-  submit(form,'../api/auth/register-company',data,'Votre organisation est créée. Confirmez votre adresse e-mail.');
+  submit(form,'../api/auth/register-company/',data,'Votre organisation est créée. Confirmez votre adresse e-mail.');
 });
 document.querySelector('#invited-form')?.addEventListener('submit',event=>{
   event.preventDefault();const form=event.currentTarget,data=values(form);
   if(data.password!==data.passwordConfirmation)return message(form,'Les deux mots de passe ne correspondent pas.');
   if(!data.managerInvitation)return message(form,'Vous devez confirmer l’invitation du gestionnaire.');
   delete data.passwordConfirmation;data.invitedByManager=true;
-  submit(form,'../api/auth/register-invited-user',data,'Votre compte est créé et rattaché à l’organisation.');
+  submit(form,'../api/auth/register-invited-user/',data,'Votre compte est créé et rattaché à l’organisation.');
 });
-document.querySelector('#reset-form')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget;submit(form,'../api/auth/password/request',values(form),'Si cette adresse correspond à un compte, un lien temporaire vient d’être envoyé.')});
+document.querySelector('#reset-form')?.addEventListener('submit',event=>{event.preventDefault();const form=event.currentTarget;submit(form,'../api/auth/password/request/',values(form),'Si cette adresse correspond à un compte, un lien temporaire vient d’être envoyé.')});
 document.querySelector('#year').textContent=new Date().getFullYear();
 const urlParams=new URLSearchParams(location.search),requestedPlan=urlParams.get('offre'),confirmation=urlParams.get('confirmation');if(requestedPlan){showPanel('register-panel');message(document.querySelector('#company-form'),'Offre sélectionnée : '+requestedPlan+'. Créez votre organisation pour poursuivre.','success')}if(confirmation==='success'){showPanel('login-panel');message(document.querySelector('#login-form'),'Votre adresse e-mail est confirmée. Vous pouvez maintenant vous connecter.','success')}else if(confirmation==='invalid'){showPanel('login-panel');message(document.querySelector('#login-form'),'Ce lien de confirmation est invalide ou expiré.')}
 const menuToggle=document.querySelector('.menu-toggle'),accountNav=document.querySelector('.site-header nav');
