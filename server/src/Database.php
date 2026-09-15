@@ -19,7 +19,7 @@ final class Database
 
         return new PDO(
             $dsn,
-            $config->string('DB_USER'),
+            $config->string('DB_USERNAME'),
             $config->string('DB_PASSWORD'),
             [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
