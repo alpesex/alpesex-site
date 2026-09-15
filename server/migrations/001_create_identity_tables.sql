@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE organizations (
+CREATE TABLE IF NOT EXISTS organizations (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     name VARCHAR(190) NOT NULL,
     status VARCHAR(32) NOT NULL DEFAULT 'pending',
@@ -13,7 +13,7 @@ CREATE TABLE organizations (
     INDEX idx_organizations_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     organization_id BIGINT UNSIGNED NULL,
     email VARCHAR(254) NOT NULL,
@@ -35,7 +35,7 @@ CREATE TABLE users (
         ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE auth_tokens (
+CREATE TABLE IF NOT EXISTS auth_tokens (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     user_id BIGINT UNSIGNED NOT NULL,
     purpose VARCHAR(32) NOT NULL,
