@@ -13,10 +13,12 @@
   <header class="site-header">
     <a href="../index.html" class="brand" aria-label="ALPES'Ex — Accueil"><img src="../assets/logo-alpesex.png" alt="ALPES'Ex"></a>
     <button class="menu-toggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false">☰</button>
-    <nav>
+    <nav aria-label="Navigation principale">
+      <a href="../index.html">Accueil</a>
       <a href="../index.html#asm">Méthode ASM</a>
       <a href="../index.html#pc-asm">PC ASM</a>
       <a href="./" class="active">Nos offres</a>
+      <a href="../index.html#contact">Contact</a>
       <a href="../compte/" class="account-link">Espace client</a>
     </nav>
   </header>
@@ -56,7 +58,7 @@
           <p class="price"><strong>Gratuit</strong></p>
           <p class="description">Un mois pour tester l’environnement complet et les quatre niveaux d’accès ASM.</p>
           <ul><li>1 licence Master temporaire</li><li>1 licence Utilisateur temporaire</li><li>1 licence Manager temporaire</li><li>1 licence Direction temporaire</li><li>Un seul essai par entreprise</li></ul>
-          <a class="plan-button outline" href="../compte/?offre=Essai">Commencer l’essai</a>
+          <a class="plan-button outline" href="../compte/souscription.html?offre=Essai">Commencer l’essai</a>
           <small>Les licences sont automatiquement bloquées à la fin des 30 jours.</small>
         </article>
 
@@ -66,7 +68,7 @@
           <p class="price"><strong>166 €</strong><span>HT / mois</span></p>
           <p class="description">La formule idéale pour une PME ou une première équipe projet structurée.</p>
           <ul><li>1 licence Master</li><li>3 licences Utilisateur</li><li>1 licence Manager</li><li>1 licence Direction</li><li>Licences supplémentaires disponibles</li></ul>
-          <a class="plan-button outline" href="../compte/?offre=Découverte">Choisir Découverte</a>
+          <a class="plan-button outline" href="../compte/souscription.html?offre=Découverte">Choisir Découverte</a>
           <small>Soit une remise de 10 % sur les licences incluses.</small>
         </article>
 
@@ -77,7 +79,7 @@
           <p class="price"><strong>459 €</strong><span>HT / mois</span></p>
           <p class="description">Une offre conçue pour harmoniser le pilotage de plusieurs projets et collaborateurs.</p>
           <ul><li>1 licence Master</li><li>20 licences Utilisateur</li><li>1 licence Manager</li><li>1 licence Direction</li><li>Licences supplémentaires disponibles</li></ul>
-          <a class="plan-button filled" href="../compte/?offre=Pro">Choisir Pro</a>
+          <a class="plan-button filled" href="../compte/souscription.html?offre=Pro">Choisir Pro</a>
           <small>Le gestionnaire pilote les membres, les licences et les appareils.</small>
         </article>
       </div>
@@ -151,11 +153,11 @@
     <section class="final-cta">
       <p class="eyebrow">PRÊT À PILOTER AUTREMENT ?</p>
       <h2>Un projet ASM ne dérive pas.<br><span>Il se pilote.</span></h2>
-      <div><a class="button primary" href="../compte/?offre=Essai">Essayer ASM gratuitement</a><a class="button secondary dark" href="../index.html#contact">Nous contacter</a></div>
+      <div><a class="button primary" href="../compte/souscription.html?offre=Essai">Essayer ASM gratuitement</a><a class="button secondary dark" href="../index.html#contact">Nous contacter</a></div>
     </section>
   </main>
 
-  <footer><img src="../assets/logo-alpesex.png" alt="ALPES'Ex"><div><a href="../index.html">Accueil</a><a href="./">Nos offres</a><a href="../compte/">Espace client</a></div><div><a href="../mentions-legales.html">Mentions légales</a><a href="mailto:contact@alpes-ex.fr">contact@alpes-ex.fr</a></div><p>© <span id="year"></span> ALPES'Ex</p></footer>
+  <footer><img src="../assets/logo-alpesex.png" alt="ALPES'Ex"><div><a href="../index.html">Accueil</a><a href="./">Nos offres</a><a href="../compte/">Espace client</a><a href="../index.html#contact">Contact</a></div><div><a href="../cgv.html">Conditions générales de vente</a><a href="../cgu.html">Conditions générales d’utilisation</a><a href="../mentions-legales.html">Mentions légales</a><a href="mailto:contact@alpes-ex.fr">contact@alpes-ex.fr</a></div><p>© <span id="year"></span> ALPES'Ex</p></footer>
   <script src="offres.js"></script>
 </body>
 </html>

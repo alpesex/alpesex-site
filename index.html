@@ -21,12 +21,13 @@
       <img src="assets/logo-alpesex.png" alt="ALPES'Ex">
     </a>
     <button class="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false">☰</button>
-    <nav class="nav">
+    <nav class="nav" aria-label="Navigation principale">
+      <a href="index.html" class="active">Accueil</a>
       <a href="#asm">Méthode ASM</a>
       <a href="#pc-asm">PC ASM</a>
-      <a href="#prestations">Prestations</a>
-      <a href="#experience">Expérience</a>
-      <a href="#contact">Nous contacter</a>\n      <a href="offres/">Nos offres</a>\n      <a href="compte/" class="nav-cta">Espace client</a>
+      <a href="offres/">Nos offres</a>
+      <a href="#contact">Contact</a>
+      <a href="compte/" class="nav-cta">Espace client</a>
     </nav>
   </header>
 
@@ -196,17 +197,22 @@
     <section class="contact section-light" id="contact">
       <div class="container contact-grid">
         <div class="contact-copy reveal">
-          <p class="eyebrow copper">Contact</p>
-          <h2>Discutons de vos prochains projets industriels.</h2>
-          <p>Présentez-nous votre contexte. Nous reviendrons vers vous pour organiser un premier échange.</p>
+          <p class="eyebrow copper">Contact ASM</p>
+          <h2>Parlons de votre environnement de pilotage.</h2>
+          <p>Une question sur PC ASM, les licences, le déploiement IT ou l’intégration à votre serveur ? Décrivez-nous votre organisation et votre besoin. Nous vous accompagnerons vers la formule et l’architecture adaptées.</p>
+          <p><strong>Assistance commerciale et technique :</strong><br><a href="mailto:contact@alpes-ex.fr">contact@alpes-ex.fr</a></p>
         </div>
         <form class="contact-form reveal" id="contactForm">
-          <label>Nom<input name="name" required autocomplete="name"></label>
-          <label>Entreprise<input name="company" autocomplete="organization"></label>
-          <label>E-mail<input name="email" type="email" required autocomplete="email"></label>
+          <label>Nom et prénom<input name="name" required autocomplete="name"></label>
+          <label>Entreprise<input name="company" required autocomplete="organization"></label>
+          <label>E-mail professionnel<input name="email" type="email" required autocomplete="email"></label>
           <label>Téléphone<input name="phone" type="tel" autocomplete="tel"></label>
-          <label class="full">Message<textarea name="message" rows="5" required></textarea></label>
-          <button class="btn btn-primary full" type="submit">Être rappelé</button>
+          <label class="full">Votre besoin
+            <select name="requestType" required><option value="">Choisir</option><option>Découvrir ASM</option><option>Choisir une offre</option><option>Déploiement IT</option><option>Assistance technique</option><option>Partenariat</option></select>
+          </label>
+          <label class="full">Message<textarea name="message" rows="5" required placeholder="Nombre d’utilisateurs, environnement serveur/NAS, besoin principal…"></textarea></label>
+          <label class="full consent"><input name="privacy" type="checkbox" required> J’accepte que mes informations soient utilisées pour répondre à ma demande, conformément aux <a href="cgu.html">CGU</a>.</label>
+          <button class="btn btn-primary full" type="submit">Envoyer ma demande</button>
         </form>
       </div>
     </section>
@@ -219,8 +225,8 @@
   <footer>
     <div class="container footer-grid">
       <img src="assets/logo-alpesex.png" alt="ALPES'Ex">
-      <div><a href="#asm">Méthode ASM</a><a href="#pc-asm">PC ASM</a><a href="#prestations">Prestations</a></div>
-      <div><a href="#experience">Expérience</a><a href="#contact">Contact</a><a href="mentions-legales.html">Mentions légales</a></div>
+      <div><a href="index.html">Accueil</a><a href="index.html#asm">Méthode ASM</a><a href="offres/">Nos offres</a><a href="compte/">Espace client</a></div>
+      <div><a href="index.html#contact">Contact</a><a href="cgv.html">Conditions générales de vente</a><a href="cgu.html">Conditions générales d’utilisation</a><a href="mentions-legales.html">Mentions légales</a></div>
     </div>
     <div class="container copyright">© <span id="year"></span> ALPES'Ex. Tous droits réservés.</div>
   </footer>

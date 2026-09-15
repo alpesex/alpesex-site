@@ -1,33 +1,25 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="Connexion et création de votre espace entreprise ASM par ALPES'Ex.">
-  <meta name="theme-color" content="#0f172a">
-  <title>Espace ASM — ALPES'Ex</title>
-  <link rel="icon" href="../assets/favicon.ico" sizes="any">
-  <link rel="stylesheet" href="compte.css">
+  <meta name="theme-color" content="#0f172a"><title>Espace ASM — ALPES'Ex</title>
+  <link rel="icon" href="../assets/favicon.ico" sizes="any"><link rel="stylesheet" href="compte.css">
 </head>
 <body>
-  <header class="account-header">
-    <a href="../index.html" class="brand" aria-label="Retour au site ALPES'Ex">
-      <img src="../assets/logo-alpesex.png" alt="ALPES'Ex">
-    </a>
-    <a href="../index.html" class="back-link">Retour au site</a>
+  <header class="account-header site-header">
+    <a href="../index.html" class="brand" aria-label="ALPES'Ex — Accueil"><img src="../assets/logo-alpesex.png" alt="ALPES'Ex"></a>
+    <button class="menu-toggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false">☰</button>
+    <nav aria-label="Navigation principale"><a href="../index.html">Accueil</a><a href="../index.html#asm">Méthode ASM</a><a href="../index.html#pc-asm">PC ASM</a><a href="../offres/">Nos offres</a><a href="../index.html#contact">Contact</a><a href="./" class="active account-link">Espace client</a></nav>
   </header>
 
   <main>
     <section class="account-intro">
       <p class="eyebrow">ESPACE ENTREPRISE ASM</p>
       <h1>Pilotez vos licences.<br><span>Maîtrisez vos accès.</span></h1>
-      <p>Retrouvez les licences ASM de votre entreprise, invitez vos collaborateurs et gérez votre abonnement depuis un espace sécurisé.</p>
-      <ul>
-        <li>Licence master réservée au gestionnaire</li>
-        <li>Licences utilisateur limitées à trois appareils</li>
-        <li>Documents ASM conservés sur votre propre serveur</li>
-      </ul>
-      <div class="security-note"><strong>Vos documents restent chez vous.</strong><br>Ce portail ne stocke que les comptes, abonnements et informations de licence.</div>
+      <p>Deux espaces adaptés aux responsabilités de chacun, avec des droits distincts et une gestion centralisée par l’organisation.</p>
+      <ul><li>Gestionnaire : offres, factures, invitations, licences et appareils</li><li>Utilisateur : licence personnelle, appareils et notices</li><li>Documents ASM conservés sur le serveur de l’entreprise</li></ul>
+      <div class="security-note"><strong>Un seul installateur IT complet.</strong><br>Cloud et Gateway sont inclus dans l’installateur. La licence Master active le système après installation.</div>
     </section>
 
     <section class="account-card" aria-labelledby="form-title">
@@ -37,66 +29,72 @@
       </div>
 
       <div id="login-panel" class="panel active" role="tabpanel" aria-labelledby="login-tab">
-        <p class="panel-kicker">Bienvenue</p>
-        <h2 id="form-title">Accéder à votre entreprise</h2>
+        <p class="panel-kicker">Bienvenue</p><h2 id="form-title">Accéder à votre espace</h2>
         <form id="login-form">
-          <label>Adresse e-mail
-            <input name="email" type="email" autocomplete="email" required>
-          </label>
-          <label>Mot de passe
-            <span class="password-field"><input name="password" type="password" autocomplete="current-password" minlength="12" required><button class="show-password" type="button" aria-label="Afficher le mot de passe">Afficher</button></span>
-          </label>
+          <fieldset class="profile-choice"><legend>Type de profil</legend>
+            <label class="profile-option"><input name="profileType" type="radio" value="manager" checked><span><strong>Gestionnaire</strong><small>Organisation, offres, factures et licences</small></span></label>
+            <label class="profile-option"><input name="profileType" type="radio" value="user"><span><strong>Utilisateur</strong><small>Licence personnelle, appareils et notices</small></span></label>
+          </fieldset>
+          <label>Adresse e-mail<input name="email" type="email" autocomplete="email" required></label>
+          <label>Mot de passe<span class="password-field"><input name="password" type="password" autocomplete="current-password" minlength="12" required><button class="show-password" type="button">Afficher</button></span></label>
           <div class="form-row"><label class="check"><input name="remember" type="checkbox"> Rester connecté</label><button class="text-button" type="button" data-open-reset>Mot de passe oublié ?</button></div>
-          <button class="primary" type="submit">Se connecter</button>
-          <p class="form-message" role="status" aria-live="polite"></p>
+          <button class="primary" type="submit">Se connecter</button><p class="form-message" role="status" aria-live="polite"></p>
         </form>
       </div>
 
       <div id="register-panel" class="panel" role="tabpanel" aria-labelledby="register-tab" hidden>
-        <p class="panel-kicker">Nouvelle entreprise</p>
-        <h2>Créer votre espace ASM</h2>
-        <form id="register-form">
-          <label>Nom de la société
-            <input name="company" autocomplete="organization" maxlength="150" required>
-          </label>
-          <div class="two-columns">
-            <label>Prénom<input name="firstName" autocomplete="given-name" maxlength="80" required></label>
-            <label>Nom<input name="lastName" autocomplete="family-name" maxlength="80" required></label>
-          </div>
-          <label>Adresse e-mail professionnelle
-            <input name="email" type="email" autocomplete="email" required>
-          </label>
-          <label>Mot de passe
-            <span class="password-field"><input name="password" type="password" autocomplete="new-password" minlength="12" required><button class="show-password" type="button" aria-label="Afficher le mot de passe">Afficher</button></span>
-            <small>12 caractères minimum.</small>
-          </label>
-          <label>Confirmer le mot de passe
-            <input name="passwordConfirmation" type="password" autocomplete="new-password" minlength="12" required>
-          </label>
-          <label class="check emphasized"><input name="manager" type="checkbox"> Je serai le gestionnaire du compte de cette entreprise</label>
-          <p class="hint">Un collaborateur rejoint une entreprise uniquement depuis l’invitation envoyée par son gestionnaire.</p>
-          <label class="check"><input name="terms" type="checkbox" required> J’accepte les conditions d’utilisation et la politique de confidentialité.</label>
+        <p class="panel-kicker">Inscription</p><h2>Créer votre accès ASM</h2>
+        <div class="registration-switch" role="group" aria-label="Type d'inscription">
+          <button type="button" class="registration-type active" data-registration="company-form">Créer une organisation</button>
+          <button type="button" class="registration-type" data-registration="invited-form">Je suis invité</button>
+        </div>
+
+        <form id="company-form" class="registration-form active">
+          <div class="manager-confirmation"><strong>Premier gestionnaire</strong><span>Le premier compte crée l’organisation et devient automatiquement son gestionnaire. Il pourra ensuite inviter les utilisateurs et transférer ce rôle.</span></div>
+          <fieldset><legend>Entreprise et facturation électronique</legend>
+            <label>Raison sociale<input name="legalName" autocomplete="organization" maxlength="150" required></label>
+            <label>Nom commercial <span class="optional">(si différent)</span><input name="tradeName" maxlength="150"></label>
+            <div class="two-columns">
+              <label>Forme juridique<select name="legalForm" required><option value="">Choisir</option><option>Entrepreneur individuel / Micro-entreprise</option><option>EURL</option><option>SARL</option><option>SASU</option><option>SAS</option><option>SA</option><option>Association</option><option>Autre</option></select></label>
+              <label>Pays<select name="country" required><option>France</option><option>Belgique</option><option>Suisse</option><option>Luxembourg</option><option>Autre</option></select></label>
+            </div>
+            <div class="two-columns"><label>SIREN<input name="siren" inputmode="numeric" pattern="[0-9]{9}" maxlength="9" placeholder="9 chiffres" required></label><label>SIRET du siège<input name="siret" inputmode="numeric" pattern="[0-9]{14}" maxlength="14" placeholder="14 chiffres" required></label></div>
+            <label>N° de TVA intracommunautaire <span class="optional">(si applicable)</span><input name="vatNumber" maxlength="20" placeholder="FR…"></label>
+            <label>Adresse de facturation<input name="billingAddress1" autocomplete="street-address" maxlength="180" required></label>
+            <label>Complément d’adresse <span class="optional">(facultatif)</span><input name="billingAddress2" maxlength="150"></label>
+            <div class="two-columns"><label>Code postal<input name="postalCode" autocomplete="postal-code" maxlength="12" required></label><label>Ville<input name="city" autocomplete="address-level2" maxlength="100" required></label></div>
+            <label>E-mail de facturation électronique<input name="billingEmail" type="email" required></label>
+            <label>Plateforme agréée de réception <span class="optional">(si connue)</span><input name="invoicePlatform" maxlength="150"></label>
+          </fieldset>
+          <fieldset><legend>Identité du gestionnaire</legend>
+            <div class="two-columns"><label>Prénom<input name="firstName" autocomplete="given-name" maxlength="80" required></label><label>Nom<input name="lastName" autocomplete="family-name" maxlength="80" required></label></div>
+            <label>Adresse e-mail professionnelle<input name="email" type="email" autocomplete="email" required></label>
+            <label>Mot de passe<span class="password-field"><input name="password" type="password" autocomplete="new-password" minlength="12" required><button class="show-password" type="button">Afficher</button></span><small>12 caractères minimum.</small></label>
+            <label>Confirmer le mot de passe<input name="passwordConfirmation" type="password" autocomplete="new-password" minlength="12" required></label>
+          </fieldset>
+          <label class="check"><input name="terms" type="checkbox" required> J’accepte les <a href="../cgu.html">CGU</a> et la politique de confidentialité.</label>
           <label class="check"><input name="marketing" type="checkbox"> Je souhaite recevoir les actualités et offres d’ALPES’Ex.</label>
-          <button class="primary" type="submit">Créer mon entreprise</button>
-          <p class="form-message" role="status" aria-live="polite"></p>
+          <button class="primary" type="submit">Créer mon organisation</button><p class="form-message" role="status" aria-live="polite"></p>
+        </form>
+
+        <form id="invited-form" class="registration-form" hidden>
+          <div class="invitation-note"><strong>Invitation obligatoire</strong><span>Votre adresse doit avoir été ajoutée à l’organisation par son gestionnaire avant votre inscription.</span></div>
+          <label>Adresse e-mail invitée<input name="email" type="email" autocomplete="email" required></label>
+          <label>Mot de passe<span class="password-field"><input name="password" type="password" autocomplete="new-password" minlength="12" required><button class="show-password" type="button">Afficher</button></span></label>
+          <label>Confirmer le mot de passe<input name="passwordConfirmation" type="password" autocomplete="new-password" minlength="12" required></label>
+          <label class="check emphasized"><input name="managerInvitation" type="checkbox" required> Je confirme avoir été invité par le gestionnaire de mon organisation.</label>
+          <label class="check"><input name="terms" type="checkbox" required> J’accepte les <a href="../cgu.html">CGU</a> et la politique de confidentialité.</label>
+          <button class="primary" type="submit">Rejoindre mon organisation</button><p class="form-message" role="status" aria-live="polite"></p>
         </form>
       </div>
 
       <div id="reset-panel" class="panel" role="tabpanel" hidden>
-        <button class="text-button back-to-login" type="button">← Retour à la connexion</button>
-        <p class="panel-kicker">Accès au compte</p>
-        <h2>Mot de passe oublié</h2>
-        <p class="hint">Saisissez votre adresse. Si un compte existe, un lien temporaire vous sera envoyé par notifications@alpes-ex.fr.</p>
-        <form id="reset-form">
-          <label>Adresse e-mail<input name="email" type="email" autocomplete="email" required></label>
-          <button class="primary" type="submit">Recevoir le lien</button>
-          <p class="form-message" role="status" aria-live="polite"></p>
-        </form>
+        <button class="text-button back-to-login" type="button">← Retour à la connexion</button><p class="panel-kicker">Accès au compte</p><h2>Mot de passe oublié</h2>
+        <p class="hint">Si un compte existe, un lien temporaire sera envoyé par notifications@alpes-ex.fr.</p>
+        <form id="reset-form"><label>Adresse e-mail<input name="email" type="email" autocomplete="email" required></label><button class="primary" type="submit">Recevoir le lien</button><p class="form-message" role="status" aria-live="polite"></p></form>
       </div>
     </section>
   </main>
-
-  <footer><span>© <span id="year"></span> ALPES'Ex</span><a href="../mentions-legales.html">Mentions légales</a><a href="mailto:contact@alpes-ex.fr">Besoin d’aide ?</a></footer>
+  <footer><span>© <span id="year"></span> ALPES'Ex</span><a href="../cgv.html">CGV</a><a href="../cgu.html">CGU</a><a href="../mentions-legales.html">Mentions légales</a><a href="mailto:contact@alpes-ex.fr">Besoin d’aide ?</a></footer>
   <script src="compte.js"></script>
-</body>
-</html>
+</body></html>
