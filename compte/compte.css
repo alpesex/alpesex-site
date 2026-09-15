@@ -25,7 +25,7 @@ select:focus{border-color:var(--copper);box-shadow:0 0 0 3px rgba(201,120,61,.16
 .registration-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:5px;margin-bottom:22px;border-radius:11px;background:#edf1f5}
 .registration-type{padding:11px;border:0;border-radius:8px;background:transparent;color:#64748b;font-weight:800;cursor:pointer}
 .registration-type.active{background:white;color:var(--navy);box-shadow:0 4px 12px rgba(15,23,42,.08)}
-.registration-form{display:grid;gap:17px}
+.registration-form{display:grid;gap:17px}.registration-form[hidden]{display:none}
 .invitation-note{display:grid;gap:5px;padding:14px;border-radius:9px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e4f85}
 .invitation-note span{font-size:.78rem;line-height:1.45}
 @media(max-width:560px){.profile-choice{grid-template-columns:1fr}.registration-switch{grid-template-columns:1fr}}
