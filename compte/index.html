@@ -10,11 +10,17 @@
   <link rel="stylesheet" href="compte.css">
 </head>
 <body>
-  <header class="account-header">
-    <a href="../index.html" class="brand" aria-label="Retour au site ALPES'Ex">
-      <img src="../assets/logo-alpesex.png" alt="ALPES'Ex">
-    </a>
-    <a href="../index.html" class="back-link">Retour au site</a>
+  <header class="account-header site-header">
+    <a href="../index.html" class="brand" aria-label="ALPES'Ex — Accueil"><img src="../assets/logo-alpesex.png" alt="ALPES'Ex"></a>
+    <button class="menu-toggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false">☰</button>
+    <nav aria-label="Navigation principale">
+      <a href="../index.html">Accueil</a>
+      <a href="../index.html#asm">Méthode ASM</a>
+      <a href="../index.html#pc-asm">PC ASM</a>
+      <a href="../offres/">Nos offres</a>
+      <a href="../index.html#contact">Contact</a>
+      <a href="./" class="active account-link">Espace client</a>
+    </nav>
   </header>
 
   <main>
@@ -23,8 +29,8 @@
       <h1>Pilotez vos licences.<br><span>Maîtrisez vos accès.</span></h1>
       <p>Retrouvez les licences ASM de votre entreprise, invitez vos collaborateurs et gérez votre abonnement depuis un espace sécurisé.</p>
       <ul>
-        <li>Licence master réservée au gestionnaire</li>
-        <li>Licences utilisateur limitées à trois appareils</li>
+        <li>Premier compte automatiquement désigné gestionnaire</li>
+        <li>Licences Master, Utilisateur, Manager et Direction</li>
         <li>Documents ASM conservés sur votre propre serveur</li>
       </ul>
       <div class="security-note"><strong>Vos documents restent chez vous.</strong><br>Ce portail ne stocke que les comptes, abonnements et informations de licence.</div>
@@ -56,26 +62,72 @@
         <p class="panel-kicker">Nouvelle entreprise</p>
         <h2>Créer votre espace ASM</h2>
         <form id="register-form">
-          <label>Nom de la société
-            <input name="company" autocomplete="organization" maxlength="150" required>
-          </label>
-          <div class="two-columns">
-            <label>Prénom<input name="firstName" autocomplete="given-name" maxlength="80" required></label>
-            <label>Nom<input name="lastName" autocomplete="family-name" maxlength="80" required></label>
-          </div>
-          <label>Adresse e-mail professionnelle
-            <input name="email" type="email" autocomplete="email" required>
-          </label>
-          <label>Mot de passe
-            <span class="password-field"><input name="password" type="password" autocomplete="new-password" minlength="12" required><button class="show-password" type="button" aria-label="Afficher le mot de passe">Afficher</button></span>
-            <small>12 caractères minimum.</small>
-          </label>
-          <label>Confirmer le mot de passe
-            <input name="passwordConfirmation" type="password" autocomplete="new-password" minlength="12" required>
-          </label>
-          <label class="check emphasized"><input name="manager" type="checkbox"> Je serai le gestionnaire du compte de cette entreprise</label>
+          <fieldset>
+            <legend>Entreprise et facturation</legend>
+            <label>Raison sociale
+              <input name="legalName" autocomplete="organization" maxlength="150" required>
+            </label>
+            <label>Nom commercial <span class="optional">(si différent)</span>
+              <input name="tradeName" maxlength="150">
+            </label>
+            <div class="two-columns">
+              <label>Forme juridique
+                <select name="legalForm" required><option value="">Choisir</option><option>Entrepreneur individuel / Micro-entreprise</option><option>EURL</option><option>SARL</option><option>SASU</option><option>SAS</option><option>SA</option><option>Association</option><option>Autre</option></select>
+              </label>
+              <label>Pays
+                <select name="country" autocomplete="country-name" required><option value="France">France</option><option value="Belgique">Belgique</option><option value="Suisse">Suisse</option><option value="Luxembourg">Luxembourg</option><option value="Autre">Autre</option></select>
+              </label>
+            </div>
+            <div class="two-columns">
+              <label>SIREN
+                <input name="siren" inputmode="numeric" pattern="[0-9]{9}" maxlength="9" placeholder="9 chiffres" required>
+              </label>
+              <label>SIRET du siège
+                <input name="siret" inputmode="numeric" pattern="[0-9]{14}" maxlength="14" placeholder="14 chiffres" required>
+              </label>
+            </div>
+            <label>N° de TVA intracommunautaire <span class="optional">(si applicable)</span>
+              <input name="vatNumber" maxlength="20" placeholder="FR…">
+            </label>
+            <label>Adresse de facturation
+              <input name="billingAddress1" autocomplete="street-address" maxlength="180" required>
+            </label>
+            <label>Complément d’adresse <span class="optional">(facultatif)</span>
+              <input name="billingAddress2" maxlength="150">
+            </label>
+            <div class="two-columns">
+              <label>Code postal<input name="postalCode" autocomplete="postal-code" maxlength="12" required></label>
+              <label>Ville<input name="city" autocomplete="address-level2" maxlength="100" required></label>
+            </div>
+            <label>E-mail de facturation électronique
+              <input name="billingEmail" type="email" autocomplete="email" required>
+            </label>
+            <label>Plateforme agréée de réception <span class="optional">(si déjà connue)</span>
+              <input name="invoicePlatform" maxlength="150" placeholder="À compléter ultérieurement si nécessaire">
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Premier gestionnaire du compte</legend>
+            <div class="two-columns">
+              <label>Prénom<input name="firstName" autocomplete="given-name" maxlength="80" required></label>
+              <label>Nom<input name="lastName" autocomplete="family-name" maxlength="80" required></label>
+            </div>
+            <label>Adresse e-mail professionnelle
+              <input name="email" type="email" autocomplete="email" required>
+            </label>
+            <label>Mot de passe
+              <span class="password-field"><input name="password" type="password" autocomplete="new-password" minlength="12" required><button class="show-password" type="button" aria-label="Afficher le mot de passe">Afficher</button></span>
+              <small>12 caractères minimum.</small>
+            </label>
+            <label>Confirmer le mot de passe
+              <input name="passwordConfirmation" type="password" autocomplete="new-password" minlength="12" required>
+            </label>
+            <div class="manager-confirmation"><strong>Gestionnaire du compte entreprise</strong><span>En tant que premier membre, vous recevrez automatiquement ce rôle. Vous pourrez ensuite inviter les collaborateurs et transférer la gestion à un autre membre.</span></div>
+          </fieldset>
+
           <p class="hint">Un collaborateur rejoint une entreprise uniquement depuis l’invitation envoyée par son gestionnaire.</p>
-          <label class="check"><input name="terms" type="checkbox" required> J’accepte les conditions d’utilisation et la politique de confidentialité.</label>
+          <label class="check"><input name="terms" type="checkbox" required> J’accepte les <a href="../cgu.html">CGU</a>, les <a href="../cgv.html">CGV</a> et la politique de confidentialité.</label>
           <label class="check"><input name="marketing" type="checkbox"> Je souhaite recevoir les actualités et offres d’ALPES’Ex.</label>
           <button class="primary" type="submit">Créer mon entreprise</button>
           <p class="form-message" role="status" aria-live="polite"></p>
@@ -96,7 +148,7 @@
     </section>
   </main>
 
-  <footer><span>© <span id="year"></span> ALPES'Ex</span><a href="../mentions-legales.html">Mentions légales</a><a href="mailto:contact@alpes-ex.fr">Besoin d’aide ?</a></footer>
+  <footer><span>© <span id="year"></span> ALPES'Ex</span><a href="../cgv.html">CGV</a><a href="../cgu.html">CGU</a><a href="../mentions-legales.html">Mentions légales</a><a href="mailto:contact@alpes-ex.fr">Besoin d’aide ?</a></footer>
   <script src="compte.js"></script>
 </body>
 </html>
