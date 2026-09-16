@@ -21,7 +21,7 @@ final class InviteMember
     }
 
     /** @param array<string, mixed> $input */
-    public function execute(int $organizationId, int $managerId, array $input): void
+    public function execute(int $organizationId, int $managerId, array $input): array
     {
         $email = strtolower(trim((string) ($input['email'] ?? '')));
         $firstName = trim((string) ($input['firstName'] ?? ''));
@@ -38,21 +38,33 @@ final class InviteMember
             throw new RuntimeException('Type de licence invalide.');
         }
 
-        $existingUser = $this->pdo->prepare('SELECT id FROM users WHERE email = :email LIMIT 1');
-        $existingUser->execute(['email' => $email]);
-        if ($existingUser->fetch()) {
-            throw new RuntimeException('Cette adresse e-mail possède déjà un compte.');
-        }
-
-        $pending = $this->pdo->prepare(
-            'SELECT id FROM organization_invitations
-             WHERE organization_id = :organization_id AND email = :email
-               AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > UTC_TIMESTAMP()
-             LIMIT 1'
+        $existingUser = $this->pdo->prepare(
+            'SELECT id, organization_id FROM users WHERE email = :email LIMIT 1'
         );
-        $pending->execute(['organization_id' => $organizationId, 'email' => $email]);
-        if ($pending->fetch()) {
-            throw new RuntimeException('Une invitation valide est déjà en attente pour cette adresse.');
+        $existingUser->execute(['email' => $email]);
+        $user = $existingUser->fetch();
+
+        $revokePending = $this->pdo->prepare(
+            'UPDATE organization_invitations
+             SET revoked_at = UTC_TIMESTAMP()
+             WHERE organization_id = :organization_id AND email = :email
+               AND accepted_at IS NULL AND revoked_at IS NULL'
+        );
+        $revokePending->execute(['organization_id' => $organizationId, 'email' => $email]);
+
+        if (is_array($user)) {
+            $url = rtrim($this->config->string('APP_URL'), '/') . '/compte/?invitationAccount=existing';
+            (new TransactionalMailer($this->mailer))->teamInvitation(
+                $email,
+                $firstName,
+                $url,
+                true
+            );
+
+            return [
+                'existingAccount' => true,
+                'sameOrganization' => (int) $user['organization_id'] === $organizationId,
+            ];
         }
 
         $token = bin2hex(random_bytes(32));
@@ -76,7 +88,13 @@ final class InviteMember
         (new TransactionalMailer($this->mailer))->teamInvitation(
             $email,
             $firstName,
-            $url
+            $url,
+            false
         );
+
+        return [
+            'existingAccount' => false,
+            'sameOrganization' => false,
+        ];
     }
 }
