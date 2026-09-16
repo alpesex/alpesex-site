@@ -61,7 +61,7 @@ final class DraftOrder
         $order=$this->pdo->prepare('SELECT public_id,status,offer_key,subtotal_cents,tax_cents,total_cents,currency,expires_at,created_at FROM orders WHERE public_id=:public_id AND organization_id=:organization_id LIMIT 1');
         $order->execute(['public_id'=>$publicId,'organization_id'=>$organizationId]);$record=$order->fetch();
         if(!is_array($record)) throw new RuntimeException('Commande introuvable.');
-        $items=$this->pdo->prepare('SELECT item_key,description,quantity,unit_price_cents,total_cents,metadata_json FROM order_items oi INNER JOIN orders o ON o.id=oi.order_id WHERE o.public_id=:public_id AND o.organization_id=:organization_id ORDER BY oi.id');
+        $items=$this->pdo->prepare('SELECT oi.item_key,oi.description,oi.quantity,oi.unit_price_cents,oi.total_cents,oi.metadata_json FROM order_items oi INNER JOIN orders o ON o.id=oi.order_id WHERE o.public_id=:public_id AND o.organization_id=:organization_id ORDER BY oi.id');
         $items->execute(['public_id'=>$publicId,'organization_id'=>$organizationId]);
         return ['id'=>$record['public_id'],'status'=>$record['status'],'offerKey'=>$record['offer_key'],'subtotalCents'=>(int)$record['subtotal_cents'],'taxCents'=>(int)$record['tax_cents'],'totalCents'=>(int)$record['total_cents'],'currency'=>$record['currency'],'expiresAt'=>$record['expires_at'],'createdAt'=>$record['created_at'],'items'=>array_map(static fn(array $i):array=>['key'=>$i['item_key'],'description'=>$i['description'],'quantity'=>(int)$i['quantity'],'unitPriceCents'=>(int)$i['unit_price_cents'],'totalCents'=>(int)$i['total_cents'],'metadata'=>json_decode($i['metadata_json']??'{}',true)],$items->fetchAll())];
     }
