@@ -5,6 +5,10 @@ declare(strict_types=1);
 use AlpesEx\Portal\Auth\ConfirmEmail;
 use AlpesEx\Portal\Database;
 
+header('Cache-Control: no-store');
+header('Referrer-Policy: no-referrer');
+header('X-Robots-Tag: noindex, nofollow, noarchive');
+
 $appUrl = 'https://alpes-ex.fr';
 
 try {
