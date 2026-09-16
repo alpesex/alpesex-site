@@ -30,9 +30,11 @@ try {
     $result=(new InviteMember($pdo,$services['config'],$services['mailer']))->execute((int)$organizationId,(int)$userId,$input);
     http_response_code(201);
     if ($result['existingAccount']) {
-        $message=$result['sameOrganization']
-            ? 'Invitation envoyée. Cet utilisateur possède déjà un compte dans votre organisation.'
-            : 'Invitation envoyée. Cet utilisateur possède déjà un compte ALPES’Ex rattaché à une autre organisation.';
+        $message=$result['reactivated']
+            ? 'Compte réactivé et invitation envoyée. L’utilisateur peut se connecter avec son mot de passe existant.'
+            : ($result['sameOrganization']
+                ? 'Invitation envoyée. Cet utilisateur possède déjà un compte actif dans votre organisation.'
+                : 'Invitation envoyée. Cet utilisateur possède déjà un compte ALPES’Ex rattaché à une autre organisation.');
     } else {
         $message='Invitation envoyée avec succès.';
     }
@@ -40,6 +42,7 @@ try {
         'message'=>$message,
         'existingAccount'=>$result['existingAccount'],
         'sameOrganization'=>$result['sameOrganization'],
+        'reactivated'=>$result['reactivated'],
     ],JSON_UNESCAPED_UNICODE);
 } catch (JsonException) {
     http_response_code(400); echo json_encode(['message'=>'Données JSON invalides.'],JSON_UNESCAPED_UNICODE);
