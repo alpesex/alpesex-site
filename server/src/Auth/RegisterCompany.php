@@ -8,6 +8,7 @@ use AlpesEx\Portal\Config;
 use AlpesEx\Portal\Mail\Mailer;
 use AlpesEx\Portal\Mail\TransactionalMailer;
 use DateTimeImmutable;
+use DateTimeZone;
 use PDO;
 use PDOException;
 use RuntimeException;
@@ -44,7 +45,9 @@ final class RegisterCompany
 
         $token = bin2hex(random_bytes(32));
         $tokenHash = hash('sha256', $token);
-        $expiresAt = (new DateTimeImmutable('+24 hours'))->format('Y-m-d H:i:s');
+        $expiresAt = (new DateTimeImmutable('now', new DateTimeZone('UTC')))
+            ->modify('+24 hours')
+            ->format('Y-m-d H:i:s');
 
         try {
             $this->pdo->beginTransaction();
