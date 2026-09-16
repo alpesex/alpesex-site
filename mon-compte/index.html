@@ -64,7 +64,20 @@
         <p id="order-message" class="order-message" role="status"></p>
       </section>
       <section id="billing" class="panel" data-role="manager"><p class="eyebrow">GESTION</p><h2>Commandes et factures</h2><div class="empty"><strong>Aucun document disponible</strong><p>Les commandes et factures apparaîtront ici après la mise en place du paiement.</p></div></section>
-      <section id="licenses" class="panel"><p class="eyebrow">ASM PLATFORM</p><h2>Licences</h2><div class="empty"><strong>Aucune licence attribuée</strong><p>Les licences Master et utilisateur seront affichées ici.</p></div></section>
+      <section id="licenses" class="panel">
+        <p class="eyebrow">CPMP — ASM</p><h2>Licences</h2>
+        <div data-role="manager" class="manual-license-box">
+          <h3>Ajouter une licence manuellement</h3>
+          <p>Collez une licence créée avec l’éditeur officiel. Sa signature et son rattachement à votre organisation seront contrôlés avant l’enregistrement.</p>
+          <form id="manual-license-form">
+            <label>Clé de licence<textarea name="licenseToken" rows="5" maxlength="20000" required placeholder="Collez ici la clé complète…"></textarea></label>
+            <button type="submit">Vérifier et ajouter</button>
+            <p id="manual-license-message" role="status"></p>
+          </form>
+        </div>
+        <h3>Licences enregistrées</h3>
+        <div id="licenses-list" class="license-list"><p>Chargement…</p></div>
+      </section>
       <section id="team" class="panel" data-role="manager">
         <p class="eyebrow">COLLABORATEURS</p><h2>Équipe et invitations</h2>
         <form id="invite-member-form" class="invite-form">

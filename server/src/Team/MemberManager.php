@@ -61,6 +61,16 @@ final class MemberManager
                  WHERE id = :id"
             );
             $assign->execute(['user_id' => $memberId, 'id' => $license['id']]);
+            $register = $this->pdo->prepare(
+                "UPDATE organization_license_registry
+                 SET assigned_user_id=:user_id,assigned_email=:email,status='active'
+                 WHERE token_hash=:token_hash"
+            );
+            $register->execute([
+                'user_id' => $memberId,
+                'email' => strtolower((string) $member['email']),
+                'token_hash' => hash('sha256', (string) $license['license_token']),
+            ]);
             $this->pdo->commit();
         } catch (Throwable $exception) {
             if ($this->pdo->inTransaction()) {
@@ -91,9 +101,17 @@ final class MemberManager
                 throw new RuntimeException('Un autre gestionnaire ne peut pas être supprimé depuis cette interface.');
             }
 
+            $revokeRegistry = $this->pdo->prepare(
+                "UPDATE organization_license_registry
+                 SET status='revoked'
+                 WHERE organization_id=:organization_id AND assigned_user_id=:user_id
+                   AND license_type='user'"
+            );
+            $revokeRegistry->execute(['organization_id' => $organizationId, 'user_id' => $memberId]);
+
             $release = $this->pdo->prepare(
                 "UPDATE organization_licenses
-                 SET assigned_user_id = NULL, status = 'available',
+                 SET assigned_user_id = NULL, status = 'revoked',
                      released_at = UTC_TIMESTAMP()
                  WHERE organization_id = :organization_id AND assigned_user_id = :user_id"
             );
