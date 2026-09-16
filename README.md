@@ -24,3 +24,14 @@ Site vitrine statique prêt pour GitHub Pages.
 - `script.js` : menu, animations, compteurs et formulaire
 - `mentions-legales.html` : base à compléter
 - `assets/logo-alpesex.png` : logo optimisé avec fond transparent
+
+## Contrôle central des licences
+
+Le portail tient le registre central des licences Master et des licences Utilisateur, Manager et Direction.
+
+- `POST /api/licenses/status/` contrôle la signature, l'enregistrement, l'organisation, la Master parente, la suspension et l'expiration.
+- L'espace gestionnaire permet d'importer manuellement une clé signée par l'éditeur officiel.
+- Une licence membre ne peut être ajoutée qu'après sa Master et pour une adresse déjà active dans l'organisation.
+- La migration `server/migrations/008_create_central_license_registry.sql` reprend les licences déjà émises.
+
+Ordre de déploiement : publier le site et appliquer la migration 008, vérifier que la Master apparaît dans le stock du gestionnaire, puis mettre à jour ASM IT et CPMP-ASM.
