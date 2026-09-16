@@ -185,16 +185,38 @@ final class NotificationQueue
                 $this->requiredInteger($payload, 'used'),
                 $this->requiredInteger($payload, 'available')
             ),
-            'promotional_communication' => $this->mailer->promotionalCommunication(
+            'promotional_communication' => $this->sendPromotional(
                 $recipient,
-                $this->requiredString($payload, 'title'),
-                $this->requiredString($payload, 'content'),
-                $this->requiredString($payload, 'actionLabel'),
-                $this->requiredString($payload, 'actionUrl'),
-                $this->requiredString($payload, 'unsubscribeUrl')
+                $payload
             ),
             default => throw new RuntimeException('Type de notification inconnu.'),
         };
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function sendPromotional(string $recipient, array $payload): void
+    {
+        $consent = $this->pdo->prepare(
+            "SELECT id FROM users
+             WHERE email = :email
+               AND marketing_opt_in_at IS NOT NULL
+               AND marketing_opt_out_at IS NULL
+               AND status = 'active'
+             LIMIT 1"
+        );
+        $consent->execute(['email' => strtolower($recipient)]);
+        if (!$consent->fetch()) {
+            return;
+        }
+
+        $this->mailer->promotionalCommunication(
+            $recipient,
+            $this->requiredString($payload, 'title'),
+            $this->requiredString($payload, 'content'),
+            $this->requiredString($payload, 'actionLabel'),
+            $this->requiredString($payload, 'actionUrl'),
+            $this->requiredString($payload, 'unsubscribeUrl')
+        );
     }
 
     /** @param array<string, mixed> $payload */
