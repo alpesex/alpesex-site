@@ -90,8 +90,16 @@
 
       <div id="reset-panel" class="panel" role="tabpanel" hidden>
         <button class="text-button back-to-login" type="button">← Retour à la connexion</button><p class="panel-kicker">Accès au compte</p><h2>Mot de passe oublié</h2>
-        <p class="hint">Si un compte existe, un lien temporaire sera envoyé par notifications@alpes-ex.fr.</p>
-        <form id="reset-form"><label>Adresse e-mail<input name="email" type="email" autocomplete="email" required></label><button class="primary" type="submit">Recevoir le lien</button><p class="form-message" role="status" aria-live="polite"></p></form>
+        <div id="reset-request">
+          <p class="hint">Si un compte existe, un lien temporaire sera envoyé par notifications@alpes-ex.fr.</p>
+          <form id="reset-form"><label>Adresse e-mail<input name="email" type="email" autocomplete="email" required></label><button class="primary" type="submit">Recevoir le lien</button><p class="form-message" role="status" aria-live="polite"></p></form>
+        </div>
+        <form id="new-password-form" hidden>
+          <p class="hint">Choisissez un nouveau mot de passe d’au moins 12 caractères.</p>
+          <label>Nouveau mot de passe<span class="password-field"><input name="password" type="password" autocomplete="new-password" minlength="12" required><button class="show-password" type="button">Afficher</button></span></label>
+          <label>Confirmer le mot de passe<input name="passwordConfirmation" type="password" autocomplete="new-password" minlength="12" required></label>
+          <button class="primary" type="submit">Modifier mon mot de passe</button><p class="form-message" role="status" aria-live="polite"></p>
+        </form>
       </div>
     </section>
   </main>
