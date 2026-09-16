@@ -6,6 +6,7 @@ namespace AlpesEx\Portal\Auth;
 
 use AlpesEx\Portal\Config;
 use AlpesEx\Portal\Mail\Mailer;
+use AlpesEx\Portal\Mail\TransactionalMailer;
 use DateTimeImmutable;
 use PDO;
 use PDOException;
@@ -121,14 +122,10 @@ final class RegisterCompany
         $firstName = $this->required($input, 'firstName', 80);
         $confirmationUrl = rtrim($this->config->string('APP_URL'), '/')
             . '/api/auth/confirm-email?token=' . rawurlencode($token);
-        $safeName = htmlspecialchars($firstName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-        $safeUrl = htmlspecialchars($confirmationUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-
-        $this->mailer->send(
+        (new TransactionalMailer($this->mailer))->emailConfirmation(
             $email,
-            "Confirmez votre adresse e-mail ALPES'Ex",
-            "<p>Bonjour {$safeName},</p><p>Votre organisation ALPES'Ex a bien été créée.</p><p><a href=\"{$safeUrl}\">Confirmer mon adresse e-mail</a></p><p>Ce lien est valable pendant 24 heures.</p><p>Si vous n’êtes pas à l’origine de cette demande, ignorez cet e-mail.</p>",
-            "Bonjour {$firstName},\n\nConfirmez votre adresse e-mail : {$confirmationUrl}\n\nCe lien est valable pendant 24 heures."
+            $firstName,
+            $confirmationUrl
         );
     }
 
