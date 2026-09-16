@@ -39,7 +39,7 @@ try {
 
     echo json_encode([
         'message' => 'Votre mot de passe a été modifié. Vous pouvez maintenant vous connecter.',
-        'redirect' => '../../../?reset=success',
+        'redirect' => '?reset=success',
     ], JSON_UNESCAPED_UNICODE);
 } catch (JsonException) {
     http_response_code(400);
