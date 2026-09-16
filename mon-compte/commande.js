@@ -1,7 +1,7 @@
 'use strict';
 const stored=sessionStorage.getItem('alpesexOrder');
 let order=null;try{order=stored?JSON.parse(stored):null}catch{}
-const labels={master:'Master',user:'Utilisateur',manager:'Manager',direction:'Direction'},prices={user:19,manager:39,direction:29};
+const labels={master:'Master',user:'Utilisateur',userPack5:'Lot de 5 Utilisateur',userPack20:'Lot de 20 Utilisateur',manager:'Manager',direction:'Direction'},prices={user:19,userPack5:90,userPack20:342,manager:39,direction:29};
 async function requireManager(){
   const response=await fetch('../api/auth/session/',{headers:{Accept:'application/json'},credentials:'same-origin'});
   if(response.status===401){location.replace('../compte/?session=expired');return false}
@@ -11,7 +11,7 @@ async function requireManager(){
 }
 function render(){
   if(!order||!order.offerName||!order.included||!order.extras){location.replace('./#subscription');return}
-  const rows=[['Offre '+order.offerName,'1',order.basePrice+' €'],...Object.entries(order.included).map(([key,quantity])=>['Licence '+labels[key]+' incluse',quantity,'Inclus']),...Object.entries(order.extras).filter(([,quantity])=>quantity>0).map(([key,quantity])=>['Licence '+labels[key]+' supplémentaire',quantity,(prices[key]*quantity)+' €'])];
+  const rows=[['Offre '+order.offerName,'1',order.basePrice+' €'],...Object.entries(order.included).map(([key,quantity])=>['Licence '+labels[key]+' incluse',quantity,'Inclus']),...Object.entries(order.extras).filter(([,quantity])=>quantity>0).map(([key,quantity])=>[(key==='userPack5'||key==='userPack20'?labels[key]:'Licence '+labels[key]+' supplémentaire'),quantity,(prices[key]*quantity)+' €'])];
   document.querySelector('#order-summary').innerHTML='<div class="summary-head"><span>Désignation</span><span>Quantité</span><span>Montant HT/mois</span></div>'+rows.map(row=>'<div class="summary-row"><span>'+row[0]+'</span><span>'+row[1]+'</span><strong>'+row[2]+'</strong></div>').join('');
   document.querySelector('#checkout-total').textContent=order.total+' € HT/mois';
 }
