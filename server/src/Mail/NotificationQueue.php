@@ -20,6 +20,7 @@ final class NotificationQueue
         'payment_failure',
         'trial_expiring',
         'license_limit',
+        'promotional_communication',
     ];
 
     public function __construct(
@@ -183,6 +184,14 @@ final class NotificationQueue
                 $recipient,
                 $this->requiredInteger($payload, 'used'),
                 $this->requiredInteger($payload, 'available')
+            ),
+            'promotional_communication' => $this->mailer->promotionalCommunication(
+                $recipient,
+                $this->requiredString($payload, 'title'),
+                $this->requiredString($payload, 'content'),
+                $this->requiredString($payload, 'actionLabel'),
+                $this->requiredString($payload, 'actionUrl'),
+                $this->requiredString($payload, 'unsubscribeUrl')
             ),
             default => throw new RuntimeException('Type de notification inconnu.'),
         };
