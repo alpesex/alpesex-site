@@ -27,9 +27,20 @@ try {
     $services = require $appDirectory . '/bootstrap.php';
     $pdo = Database::connect($services['config']);
     (new RateLimiter($pdo))->assertAllowed('invite_member',(string)($_SERVER['REMOTE_ADDR']??'unknown').'|'.$organizationId,20,3600);
-    (new InviteMember($pdo,$services['config'],$services['mailer']))->execute((int)$organizationId,(int)$userId,$input);
+    $result=(new InviteMember($pdo,$services['config'],$services['mailer']))->execute((int)$organizationId,(int)$userId,$input);
     http_response_code(201);
-    echo json_encode(['message'=>'Invitation envoyée avec succès.'],JSON_UNESCAPED_UNICODE);
+    if ($result['existingAccount']) {
+        $message=$result['sameOrganization']
+            ? 'Invitation envoyée. Cet utilisateur possède déjà un compte dans votre organisation.'
+            : 'Invitation envoyée. Cet utilisateur possède déjà un compte ALPES’Ex rattaché à une autre organisation.';
+    } else {
+        $message='Invitation envoyée avec succès.';
+    }
+    echo json_encode([
+        'message'=>$message,
+        'existingAccount'=>$result['existingAccount'],
+        'sameOrganization'=>$result['sameOrganization'],
+    ],JSON_UNESCAPED_UNICODE);
 } catch (JsonException) {
     http_response_code(400); echo json_encode(['message'=>'Données JSON invalides.'],JSON_UNESCAPED_UNICODE);
 } catch (RuntimeException $exception) {
