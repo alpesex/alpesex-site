@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use AlpesEx\Portal\Database;
 use AlpesEx\Portal\Mail\TransactionalMailer;
+use AlpesEx\Portal\Licensing\LicenseIssuer;
 use AlpesEx\Portal\Team\MemberManager;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -32,7 +33,7 @@ try {
     $appDirectory = getenv('ALPESEX_APP_DIR') ?: dirname(__DIR__, 4) . '/app';
     $services = require $appDirectory . '/bootstrap.php';
     $pdo = Database::connect($services['config']);
-    $manager = new MemberManager($pdo, new TransactionalMailer($services['mailer']));
+    $manager = new MemberManager($pdo, new TransactionalMailer($services['mailer']), new LicenseIssuer($services['config']));
     $manager->removeMember((int)$organizationId, (int)$managerId, (int)$memberId);
     echo json_encode(['message'=>'Le membre a été retiré et sa licence est de nouveau disponible.'],JSON_UNESCAPED_UNICODE);
 } catch (RuntimeException $exception) {
