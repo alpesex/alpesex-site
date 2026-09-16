@@ -8,7 +8,6 @@ use AlpesEx\Portal\Config;
 use AlpesEx\Portal\Mail\Mailer;
 use AlpesEx\Portal\Mail\TransactionalMailer;
 use DateTimeImmutable;
-use DateTimeZone;
 use PDO;
 use RuntimeException;
 
@@ -40,7 +39,7 @@ final class InviteMember
         }
 
         $existingUser = $this->pdo->prepare(
-            'SELECT id, organization_id FROM users WHERE email = :email LIMIT 1'
+            'SELECT id, organization_id, status FROM users WHERE email = :email LIMIT 1'
         );
         $existingUser->execute(['email' => $email]);
         $user = $existingUser->fetch();
@@ -54,6 +53,18 @@ final class InviteMember
         $revokePending->execute(['organization_id' => $organizationId, 'email' => $email]);
 
         if (is_array($user)) {
+            $sameOrganization = (int) $user['organization_id'] === $organizationId;
+            $reactivated = false;
+            if ($sameOrganization && $user['status'] === 'removed') {
+                $reactivate = $this->pdo->prepare(
+                    "UPDATE users SET status='active' WHERE id=:id AND organization_id=:organization_id AND status='removed'"
+                );
+                $reactivate->execute([
+                    'id' => $user['id'],
+                    'organization_id' => $organizationId,
+                ]);
+                $reactivated = $reactivate->rowCount() === 1;
+            }
             $url = rtrim($this->config->string('APP_URL'), '/') . '/compte/?invitationAccount=existing';
             (new TransactionalMailer($this->mailer))->teamInvitation(
                 $email,
@@ -64,7 +75,8 @@ final class InviteMember
 
             return [
                 'existingAccount' => true,
-                'sameOrganization' => (int) $user['organization_id'] === $organizationId,
+                'sameOrganization' => $sameOrganization,
+                'reactivated' => $reactivated,
             ];
         }
 
@@ -82,9 +94,7 @@ final class InviteMember
             'last_name' => $lastName !== '' ? $lastName : null,
             'intended_license' => $license,
             'token_hash' => hash('sha256', $token),
-            'expires_at' => (new DateTimeImmutable('now', new DateTimeZone('UTC')))
-                ->modify('+7 days')
-                ->format('Y-m-d H:i:s'),
+            'expires_at' => (new DateTimeImmutable('+7 days'))->format('Y-m-d H:i:s'),
         ]);
 
         $url = rtrim($this->config->string('APP_URL'), '/') . '/compte/?invitation=' . rawurlencode($token);
@@ -98,6 +108,7 @@ final class InviteMember
         return [
             'existingAccount' => false,
             'sameOrganization' => false,
+            'reactivated' => false,
         ];
     }
 }
