@@ -151,6 +151,28 @@ final class TransactionalMailer
         );
     }
 
+    public function promotionalCommunication(
+        string $recipient,
+        string $title,
+        string $content,
+        string $actionLabel,
+        string $actionUrl,
+        string $unsubscribeUrl
+    ): void {
+        $safeTitle = $this->html($title);
+        $safeContent = nl2br($this->html($content));
+        $safeActionLabel = $this->html($actionLabel);
+        $safeActionUrl = $this->html($actionUrl);
+        $safeUnsubscribeUrl = $this->html($unsubscribeUrl);
+
+        $this->mailer->send(
+            $recipient,
+            $title . " – ALPES'Ex",
+            "<h2>{$safeTitle}</h2><p>{$safeContent}</p><p><a href=\"{$safeActionUrl}\">{$safeActionLabel}</a></p><hr><p><small>Vous recevez cet e-mail car vous avez accepté les communications ALPES'Ex. <a href=\"{$safeUnsubscribeUrl}\">Me désinscrire</a></small></p>",
+            "{$title}\n\n{$content}\n\n{$actionLabel} : {$actionUrl}\n\nSe désinscrire : {$unsubscribeUrl}"
+        );
+    }
+
     private function html(string $value): string
     {
         return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
