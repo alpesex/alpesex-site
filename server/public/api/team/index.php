@@ -16,7 +16,7 @@ try {
     session_start();
     $organizationId=filter_var($_SESSION['organization_id']??null,FILTER_VALIDATE_INT);
     if (!$organizationId || ($_SESSION['role']??'')!=='manager') throw new RuntimeException('Accès gestionnaire requis.');
-    $appDirectory=getenv('ALPESEX_APP_DIR')?:dirname(__DIR__,4).'/app';
+    $appDirectory=getenv('ALPESEX_APP_DIR')?:dirname(__DIR__,3).'/app';
     $services=require $appDirectory.'/bootstrap.php';
     $pdo=Database::connect($services['config']);
     $members=$pdo->prepare('SELECT id,email,first_name,last_name,role,status,created_at FROM users WHERE organization_id=:organization_id ORDER BY role ASC,last_name ASC,first_name ASC');
