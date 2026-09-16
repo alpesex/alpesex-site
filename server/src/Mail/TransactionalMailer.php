@@ -22,16 +22,27 @@ final class TransactionalMailer
         );
     }
 
-    public function teamInvitation(string $recipient, string $firstName, string $invitationUrl): void
-    {
+    public function teamInvitation(
+        string $recipient,
+        string $firstName,
+        string $invitationUrl,
+        bool $existingAccount = false
+    ): void {
         $displayName = $firstName !== '' ? $firstName : 'Bonjour';
         $name = $this->html($displayName);
         $url = $this->html($invitationUrl);
+        $action = $existingAccount ? 'Me connecter' : 'Créer mon compte';
+        $intro = $existingAccount
+            ? "Vous possédez déjà un compte ALPES'Ex. Le gestionnaire vous invite à accéder à son espace."
+            : "Le gestionnaire de votre organisation vous invite à rejoindre son espace ALPES'Ex.";
+        $validity = $existingAccount ? '' : '<p>Ce lien personnel est valable pendant 7 jours.</p>';
+        $plainValidity = $existingAccount ? '' : "\n\nCe lien personnel est valable pendant 7 jours.";
+
         $this->mailer->send(
             $recipient,
             "Invitation à rejoindre une équipe ALPES'Ex",
-            "<p>{$name},</p><p>Le gestionnaire de votre organisation vous invite à rejoindre son espace ALPES'Ex.</p><p><a href=\"{$url}\">Créer mon compte</a></p><p>Ce lien personnel est valable pendant 7 jours.</p>",
-            "{$displayName},\n\nCréez votre compte ALPES'Ex : {$invitationUrl}\n\nCe lien personnel est valable pendant 7 jours."
+            "<p>{$name},</p><p>{$intro}</p><p><a href=\"{$url}\">{$action}</a></p>{$validity}",
+            "{$displayName},\n\n{$intro}\n\n{$action} : {$invitationUrl}{$plainValidity}"
         );
     }
 
