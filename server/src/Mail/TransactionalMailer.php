@@ -128,6 +128,18 @@ final class TransactionalMailer
         );
     }
 
+    public function userLicenseAssigned(string $recipient, string $firstName, string $licenseNumber): void
+    {
+        $name = $this->html($firstName);
+        $number = $this->html($licenseNumber);
+        $this->mailer->send(
+            $recipient,
+            "Votre licence Utilisateur ALPES'Ex",
+            "<p>Bonjour {$name},</p><p>Votre gestionnaire vous a affecté une licence Utilisateur ALPES'Ex.</p><p>Numéro de licence : <strong>{$number}</strong></p><p>Conservez ce numéro de manière confidentielle.</p>",
+            "Bonjour {$firstName},\n\nVotre numéro de licence Utilisateur ALPES'Ex : {$licenseNumber}\n\nConservez ce numéro de manière confidentielle."
+        );
+    }
+
     private function html(string $value): string
     {
         return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
