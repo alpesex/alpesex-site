@@ -128,15 +128,47 @@ final class TransactionalMailer
         );
     }
 
-    public function userLicenseAssigned(string $recipient, string $firstName, string $licenseNumber): void
+    public function userLicenseAssigned(
+        string $recipient,
+        string $firstName,
+        string $licenseType,
+        string $licenseNumber,
+        string $signedToken
+    ): void
     {
         $name = $this->html($firstName);
+        $type = $this->html(ucfirst($licenseType));
         $number = $this->html($licenseNumber);
+        $token = $this->html($signedToken);
         $this->mailer->send(
             $recipient,
-            "Votre licence Utilisateur ALPES'Ex",
-            "<p>Bonjour {$name},</p><p>Votre gestionnaire vous a affecté une licence Utilisateur ALPES'Ex.</p><p>Numéro de licence : <strong>{$number}</strong></p><p>Conservez ce numéro de manière confidentielle.</p>",
-            "Bonjour {$firstName},\n\nVotre numéro de licence Utilisateur ALPES'Ex : {$licenseNumber}\n\nConservez ce numéro de manière confidentielle."
+            "Votre licence {$licenseType} CPMP – ASM",
+            "<p>Bonjour {$name},</p><p>Votre gestionnaire vous a affecté une licence <strong>{$type}</strong>.</p><p>Référence : <strong>{$number}</strong></p><p>Clé à saisir dans CPMP – ASM :</p><p style=\"word-break:break-all;font-family:monospace\">{$token}</p><p>Conservez cette clé de manière confidentielle.</p>",
+            "Bonjour {$firstName},\n\nVotre licence {$licenseType} CPMP – ASM\nRéférence : {$licenseNumber}\nClé à saisir : {$signedToken}\n\nConservez cette clé de manière confidentielle."
+        );
+    }
+
+    /** @param list<string> $licenseNumbers */
+    public function paidOrderLicenses(
+        string $recipient,
+        string $invoiceNumber,
+        string $invoiceUrl,
+        string $masterToken,
+        array $licenseNumbers
+    ): void {
+        $invoice = $this->html($invoiceNumber);
+        $url = $this->html($invoiceUrl);
+        $token = $this->html($masterToken);
+        $numbers = implode('', array_map(
+            fn (string $number): string => '<li>' . $this->html($number) . '</li>',
+            $licenseNumbers
+        ));
+        $plainNumbers = implode("\n- ", $licenseNumbers);
+        $this->mailer->send(
+            $recipient,
+            "Vos licences CPMP – ASM et votre facture {$invoiceNumber}",
+            "<p>Votre paiement est validé.</p><p><a href=\"{$url}\">Télécharger la facture {$invoice}</a></p><p>Votre licence Master :</p><p style=\"word-break:break-all;font-family:monospace\">{$token}</p><p>Références ajoutées au stock :</p><ul>{$numbers}</ul><p>Les licences Utilisateur, Manager et Direction seront signées au nom du membre lors de leur affectation depuis votre espace gestionnaire.</p>",
+            "Votre paiement est validé.\nFacture {$invoiceNumber} : {$invoiceUrl}\n\nLicence Master :\n{$masterToken}\n\nRéférences ajoutées au stock :\n- {$plainNumbers}"
         );
     }
 

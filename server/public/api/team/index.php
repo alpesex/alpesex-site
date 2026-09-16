@@ -22,7 +22,7 @@ try {
     $members=$pdo->prepare("SELECT u.id,u.email,u.first_name,u.last_name,u.role,u.status,u.created_at,
         l.license_number,l.license_type
         FROM users u
-        LEFT JOIN organization_licenses l ON l.assigned_user_id=u.id AND l.status='assigned'
+        LEFT JOIN organization_licenses l ON l.assigned_user_id=u.id AND l.status='assigned' AND l.license_type<>'master'
         WHERE u.organization_id=:organization_id AND u.status<>'removed'
         ORDER BY u.role ASC,u.last_name ASC,u.first_name ASC");
     $members->execute(['organization_id'=>$organizationId]);

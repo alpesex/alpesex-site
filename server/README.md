@@ -13,6 +13,13 @@ Les secrets ne sont jamais versionnés. Le fichier réel se trouve uniquement
 dans `/home/www/private/.env`. Le modèle `.env.example` ne contient aucun
 secret et documente seulement les variables obligatoires.
 
+La clé privée Ed25519 de l'autorité de licences se trouve dans
+`/home/www/private/licenses/issuer-private.pem`. Seul PHP doit pouvoir la lire.
+La variable `ALPESEX_LICENSE_PRIVATE_KEY_PATH` de `.env` désigne ce fichier.
+Cette clé est permanente : la remplacer invaliderait la génération compatible
+avec CPMP — ASM et l'installateur IT. Elle ne doit jamais être publiée dans le
+dépôt, un téléchargement Web ou un journal.
+
 Le site accessible publiquement reste dans `/home/www/public`.
 
 ## Vérification sans envoi
@@ -23,6 +30,7 @@ Depuis une session SSH IONOS :
 cd /home/www/app
 /home/www/bin/composer install --no-dev --classmap-authoritative
 php bin/check-mail-config.php
+php bin/check-license-authority.php
 ```
 
 La commande vérifie la présence et le format des paramètres sans afficher les
@@ -36,3 +44,6 @@ mots de passe et sans envoyer de message.
 - secrets hors de la racine Web et hors de GitHub ;
 - erreurs publiques génériques, détails techniques réservés aux journaux ;
 - aucun endpoint public de test d'envoi.
+- les licences sont signées côté serveur ; la clé privée ne quitte jamais IONOS ;
+- le provisionnement post-paiement est idempotent et passe par
+  `PaidOrderLicenseProvisioner`.

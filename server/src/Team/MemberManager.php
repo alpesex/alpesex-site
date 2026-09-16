@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace AlpesEx\Portal\Team;
 
+use AlpesEx\Portal\Licensing\LicenseIssuer;
 use AlpesEx\Portal\Mail\TransactionalMailer;
+use DateTimeImmutable;
+use DateTimeZone;
 use PDO;
 use RuntimeException;
 use Throwable;
@@ -13,19 +16,20 @@ final class MemberManager
 {
     public function __construct(
         private readonly PDO $pdo,
-        private readonly TransactionalMailer $mailer
+        private readonly TransactionalMailer $mailer,
+        private readonly LicenseIssuer $issuer
     ) {
     }
 
-    /** @return array{licenseNumber:string,reused:bool} */
-    public function assignUserLicense(int $organizationId, int $memberId): array
+    /** @return array{licenseNumber:string,signedToken:string,reused:bool} */
+    public function assignUserLicense(int $organizationId, int $memberId, string $licenseType = 'user'): array
     {
+        if (!in_array($licenseType, ['user', 'manager', 'direction'], true)) {
+            throw new RuntimeException('Type de licence invalide.');
+        }
         $this->pdo->beginTransaction();
         try {
             $member = $this->memberForUpdate($organizationId, $memberId);
-            if ($member['role'] === 'manager') {
-                throw new RuntimeException('La licence du gestionnaire ne peut pas être modifiée ici.');
-            }
             if ($member['status'] !== 'active') {
                 throw new RuntimeException('Ce membre ne possède pas de compte actif.');
             }
@@ -33,7 +37,7 @@ final class MemberManager
             $existing = $this->pdo->prepare(
                 "SELECT license_number FROM organization_licenses
                  WHERE organization_id = :organization_id AND assigned_user_id = :user_id
-                   AND status = 'assigned' LIMIT 1"
+                   AND license_type <> 'master' AND status = 'assigned' LIMIT 1"
             );
             $existing->execute(['organization_id' => $organizationId, 'user_id' => $memberId]);
             if ($existing->fetch()) {
@@ -41,38 +45,46 @@ final class MemberManager
             }
 
             $available = $this->pdo->prepare(
-                "SELECT id, license_number FROM organization_licenses
-                 WHERE organization_id = :organization_id AND license_type = 'user'
+                "SELECT id, license_number, expires_at FROM organization_licenses
+                 WHERE organization_id = :organization_id AND license_type = :license_type
                    AND assigned_user_id IS NULL AND status = 'available'
                  ORDER BY released_at IS NULL ASC, released_at ASC, id ASC
                  LIMIT 1 FOR UPDATE"
             );
-            $available->execute(['organization_id' => $organizationId]);
+            $available->execute(['organization_id' => $organizationId, 'license_type' => $licenseType]);
             $license = $available->fetch();
             $reused = is_array($license);
 
             if (!$reused) {
-                $licenseNumber = $this->newLicenseNumber();
-                $insert = $this->pdo->prepare(
-                    "INSERT INTO organization_licenses
-                     (organization_id, license_number, license_type, assigned_user_id, status, assigned_at)
-                     VALUES (:organization_id, :license_number, 'user', :user_id, 'assigned', UTC_TIMESTAMP())"
-                );
-                $insert->execute([
-                    'organization_id' => $organizationId,
-                    'license_number' => $licenseNumber,
-                    'user_id' => $memberId,
-                ]);
-            } else {
-                $licenseNumber = (string) $license['license_number'];
-                $assign = $this->pdo->prepare(
-                    "UPDATE organization_licenses
-                     SET assigned_user_id = :user_id, status = 'assigned',
-                         assigned_at = UTC_TIMESTAMP(), released_at = NULL
-                     WHERE id = :id"
-                );
-                $assign->execute(['user_id' => $memberId, 'id' => $license['id']]);
+                throw new RuntimeException('Aucune licence de ce type n’est disponible dans le stock.');
             }
+
+            $organization = $this->licenseContext($organizationId);
+            $licenseNumber = (string) $license['license_number'];
+            $licenseId = 'lic-' . $licenseType . '-' . bin2hex(random_bytes(16));
+            $expiresAt = new DateTimeImmutable((string) $license['expires_at'], new DateTimeZone('UTC'));
+            $issued = $this->issuer->issueUser(
+                $licenseId,
+                (string) $organization['license_organization_id'],
+                (string) $organization['master_license_id'],
+                (string) $organization['company'],
+                (string) $member['email'],
+                $licenseType,
+                $expiresAt
+            );
+            $assign = $this->pdo->prepare(
+                "UPDATE organization_licenses
+                 SET license_id=:license_id,signed_token=:signed_token,assigned_user_id=:user_id,
+                     status='assigned',assigned_at=UTC_TIMESTAMP(),issued_at=UTC_TIMESTAMP(),
+                     released_at=NULL,revoked_at=NULL
+                 WHERE id=:id"
+            );
+            $assign->execute([
+                'license_id' => $licenseId,
+                'signed_token' => $issued['token'],
+                'user_id' => $memberId,
+                'id' => $license['id'],
+            ]);
 
             $this->pdo->commit();
         } catch (Throwable $exception) {
@@ -85,10 +97,12 @@ final class MemberManager
         $this->mailer->userLicenseAssigned(
             (string) $member['email'],
             (string) $member['first_name'],
-            $licenseNumber
+            $licenseType,
+            $licenseNumber,
+            $issued['token']
         );
 
-        return ['licenseNumber' => $licenseNumber, 'reused' => $reused];
+        return ['licenseNumber' => $licenseNumber, 'signedToken' => $issued['token'], 'reused' => $reused];
     }
 
     public function removeMember(int $organizationId, int $managerId, int $memberId): void
@@ -104,11 +118,22 @@ final class MemberManager
                 throw new RuntimeException('Un autre gestionnaire ne peut pas être supprimé depuis cette interface.');
             }
 
+            $revoke = $this->pdo->prepare(
+                "INSERT IGNORE INTO license_revocations (organization_id,license_id,reason)
+                 SELECT organization_id,license_id,'member_removed'
+                 FROM organization_licenses
+                 WHERE organization_id=:organization_id AND assigned_user_id=:user_id
+                   AND license_type<>'master' AND license_id IS NOT NULL"
+            );
+            $revoke->execute(['organization_id' => $organizationId, 'user_id' => $memberId]);
+
             $release = $this->pdo->prepare(
                 "UPDATE organization_licenses
                  SET assigned_user_id = NULL, status = 'available',
-                     released_at = UTC_TIMESTAMP()
-                 WHERE organization_id = :organization_id AND assigned_user_id = :user_id"
+                     license_id=NULL,signed_token=NULL,issued_at=NULL,
+                     released_at = UTC_TIMESTAMP(),revoked_at=UTC_TIMESTAMP()
+                 WHERE organization_id = :organization_id AND assigned_user_id = :user_id
+                   AND license_type <> 'master'"
             );
             $release->execute(['organization_id' => $organizationId, 'user_id' => $memberId]);
 
@@ -142,16 +167,22 @@ final class MemberManager
         return $member;
     }
 
-    private function newLicenseNumber(): string
+    /** @return array{company:string,license_organization_id:string,master_license_id:string} */
+    private function licenseContext(int $organizationId): array
     {
-        do {
-            $number = 'ALX-USR-' . strtoupper(bin2hex(random_bytes(8)));
-            $statement = $this->pdo->prepare(
-                'SELECT 1 FROM organization_licenses WHERE license_number = :license_number LIMIT 1'
-            );
-            $statement->execute(['license_number' => $number]);
-        } while ($statement->fetchColumn());
-
-        return $number;
+        $statement = $this->pdo->prepare(
+            "SELECT o.name AS company,o.license_organization_id,l.license_id AS master_license_id
+             FROM organizations o
+             INNER JOIN organization_licenses l ON l.organization_id=o.id
+               AND l.license_type='master' AND l.status='assigned'
+             WHERE o.id=:organization_id
+             ORDER BY l.id DESC LIMIT 1 FOR UPDATE"
+        );
+        $statement->execute(['organization_id' => $organizationId]);
+        $context = $statement->fetch();
+        if (!is_array($context) || !$context['license_organization_id'] || !$context['master_license_id']) {
+            throw new RuntimeException('La licence Master de l’organisation est absente ou inactive.');
+        }
+        return $context;
     }
 }
