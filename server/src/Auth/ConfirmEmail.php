@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace AlpesEx\Portal\Auth;
 
-use DateTimeImmutable;
 use PDO;
 use RuntimeException;
 
@@ -23,9 +22,10 @@ final class ConfirmEmail
         $this->pdo->beginTransaction();
         try {
             $statement = $this->pdo->prepare(
-                'SELECT id, user_id, expires_at, used_at
+                'SELECT id, user_id
                  FROM auth_tokens
                  WHERE token_hash = :token_hash AND purpose = :purpose
+                   AND used_at IS NULL AND expires_at > UTC_TIMESTAMP()
                  LIMIT 1 FOR UPDATE'
             );
             $statement->execute([
@@ -34,7 +34,7 @@ final class ConfirmEmail
             ]);
             $record = $statement->fetch();
 
-            if (!$record || $record['used_at'] !== null || new DateTimeImmutable($record['expires_at']) < new DateTimeImmutable()) {
+            if (!is_array($record)) {
                 throw new RuntimeException('Ce lien de confirmation est invalide ou expiré.');
             }
 
