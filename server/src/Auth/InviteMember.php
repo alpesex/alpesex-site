@@ -8,6 +8,7 @@ use AlpesEx\Portal\Config;
 use AlpesEx\Portal\Mail\Mailer;
 use AlpesEx\Portal\Mail\TransactionalMailer;
 use DateTimeImmutable;
+use DateTimeZone;
 use PDO;
 use RuntimeException;
 
@@ -81,7 +82,9 @@ final class InviteMember
             'last_name' => $lastName !== '' ? $lastName : null,
             'intended_license' => $license,
             'token_hash' => hash('sha256', $token),
-            'expires_at' => (new DateTimeImmutable('+7 days'))->format('Y-m-d H:i:s'),
+            'expires_at' => (new DateTimeImmutable('now', new DateTimeZone('UTC')))
+                ->modify('+7 days')
+                ->format('Y-m-d H:i:s'),
         ]);
 
         $url = rtrim($this->config->string('APP_URL'), '/') . '/compte/?invitation=' . rawurlencode($token);
