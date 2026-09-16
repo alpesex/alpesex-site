@@ -6,6 +6,7 @@ namespace AlpesEx\Portal\Auth;
 
 use AlpesEx\Portal\Config;
 use AlpesEx\Portal\Mail\Mailer;
+use AlpesEx\Portal\Mail\TransactionalMailer;
 use DateTimeImmutable;
 use PDO;
 use RuntimeException;
@@ -72,14 +73,10 @@ final class InviteMember
         ]);
 
         $url = rtrim($this->config->string('APP_URL'), '/') . '/compte/?invitation=' . rawurlencode($token);
-        $safeUrl = htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-        $name = $firstName !== '' ? $firstName : 'Bonjour';
-        $safeName = htmlspecialchars($name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-        $this->mailer->send(
+        (new TransactionalMailer($this->mailer))->teamInvitation(
             $email,
-            "Invitation à rejoindre une équipe ALPES'Ex",
-            "<p>{$safeName},</p><p>Le gestionnaire de votre organisation vous invite à rejoindre son espace ALPES'Ex.</p><p><a href=\"{$safeUrl}\">Créer mon compte</a></p><p>Ce lien personnel est valable pendant 7 jours.</p>",
-            "{$name},\n\nCréez votre compte ALPES'Ex : {$url}\n\nCe lien personnel est valable pendant 7 jours."
+            $firstName,
+            $url
         );
     }
 }
