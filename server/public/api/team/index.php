@@ -20,9 +20,15 @@ try {
     $services=require $appDirectory.'/bootstrap.php';
     $pdo=Database::connect($services['config']);
     $members=$pdo->prepare("SELECT u.id,u.email,u.first_name,u.last_name,u.role,u.status,u.created_at,
-        l.license_number,l.license_type
+        COALESCE(l.license_number,r.issuer_license_id) AS license_number,
+        COALESCE(l.license_type,r.license_role,r.license_type) AS license_type
         FROM users u
         LEFT JOIN organization_licenses l ON l.assigned_user_id=u.id AND l.status='assigned'
+        LEFT JOIN organization_license_registry r ON r.id=(
+            SELECT r2.id FROM organization_license_registry r2
+            WHERE r2.assigned_user_id=u.id AND r2.status='active' AND r2.license_type='user'
+            ORDER BY r2.id DESC LIMIT 1
+        )
         WHERE u.organization_id=:organization_id AND u.status<>'removed'
         ORDER BY u.role ASC,u.last_name ASC,u.first_name ASC");
     $members->execute(['organization_id'=>$organizationId]);
