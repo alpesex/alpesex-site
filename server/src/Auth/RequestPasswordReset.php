@@ -8,6 +8,7 @@ use AlpesEx\Portal\Config;
 use AlpesEx\Portal\Mail\Mailer;
 use AlpesEx\Portal\Mail\TransactionalMailer;
 use DateTimeImmutable;
+use DateTimeZone;
 use PDO;
 
 final class RequestPasswordReset
@@ -56,7 +57,9 @@ final class RequestPasswordReset
                 'user_id' => $user['id'],
                 'purpose' => 'password_reset',
                 'token_hash' => hash('sha256', $token),
-                'expires_at' => (new DateTimeImmutable('+30 minutes'))->format('Y-m-d H:i:s'),
+                'expires_at' => (new DateTimeImmutable('now', new DateTimeZone('UTC')))
+                    ->modify('+30 minutes')
+                    ->format('Y-m-d H:i:s'),
             ]);
             $this->pdo->commit();
         } catch (\Throwable $exception) {
