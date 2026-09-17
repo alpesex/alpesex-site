@@ -12,20 +12,25 @@ use Throwable;
 
 final class Mailer
 {
+    private readonly EmailDeliveryLogger $deliveryLogger;
+
     public function __construct(private readonly Config $config)
     {
+        $this->deliveryLogger = new EmailDeliveryLogger($config);
     }
 
     public function send(
         string $recipient,
         string $subject,
         string $htmlBody,
-        string $textBody
+        string $textBody,
+        string $messageType = 'transactional'
     ): void {
         if (filter_var($recipient, FILTER_VALIDATE_EMAIL) === false) {
             throw new InvalidArgumentException('Adresse destinataire invalide.');
         }
 
+        $correlationId = bin2hex(random_bytes(16));
         $mail = new PHPMailer(true);
 
         try {
@@ -54,7 +59,24 @@ final class Mailer
             $mail->Body = $htmlBody;
             $mail->AltBody = $textBody;
             $mail->send();
+
+            $messageId = trim($mail->getLastMessageID(), "<> \t\r\n");
+            $this->deliveryLogger->record(
+                $correlationId,
+                $messageType,
+                $recipient,
+                'sent',
+                $messageId !== '' ? $messageId : null
+            );
         } catch (Throwable $error) {
+            $this->deliveryLogger->record(
+                $correlationId,
+                $messageType,
+                $recipient,
+                'failed',
+                null,
+                'smtp_send_failed'
+            );
             throw new RuntimeException("L'e-mail n'a pas pu être envoyé.", 0, $error);
         }
     }

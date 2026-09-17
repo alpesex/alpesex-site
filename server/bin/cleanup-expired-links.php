@@ -24,7 +24,12 @@ $invitations = $pdo->exec(
         OR (accepted_at IS NOT NULL AND accepted_at < UTC_TIMESTAMP() - INTERVAL 30 DAY)
         OR (revoked_at IS NOT NULL AND revoked_at < UTC_TIMESTAMP() - INTERVAL 30 DAY)"
 );
+$emailLogs = $pdo->exec(
+    "DELETE FROM email_delivery_logs
+     WHERE created_at < UTC_TIMESTAMP() - INTERVAL 180 DAY"
+);
 
 echo 'Liens expirés supprimés : '
     . ((int) $auth + (int) $downloads + (int) $invitations)
     . PHP_EOL;
+echo 'Journaux e-mail expirés supprimés : ' . (int) $emailLogs . PHP_EOL;
