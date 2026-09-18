@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0f172a"><title>Récapitulatif de commande — ALPES'Ex</title><link rel="icon" href="../assets/favicon.ico"><link rel="stylesheet" href="mon-compte.css"></head>
+<body class="checkout-body">
+<header><a class="brand" href="../"><img src="../assets/logo-alpesex.png" alt="ALPES'Ex"></a><div class="account-actions"><span id="header-user"></span><button id="logout" type="button">Se déconnecter</button></div></header>
+<main class="checkout-page">
+  <a class="back-order" href="./#subscription">← Modifier ma sélection</a>
+  <section class="checkout-card">
+    <p class="eyebrow">RÉCAPITULATIF DE LA COMMANDE</p><h1>Vérifiez avant de continuer</h1>
+    <div class="master-note"><strong>Une seule licence Master est nécessaire.</strong><span>Elle est incluse dans l’offre sélectionnée et permet d’activer l’environnement ASM.</span></div>
+    <div id="order-summary"></div>
+    <div class="checkout-total"><span>Total mensuel HT</span><strong id="checkout-total">—</strong><small>TVA et total TTC calculés sur la page de paiement</small></div>
+    <label class="validation-check"><input id="validate-order" type="checkbox"><span>Je confirme l’offre, les quantités et les prix indiqués ci-dessus et j’accepte les <a href="../cgv.html" target="_blank">CGV</a> et les <a href="../cgu.html" target="_blank">CGU</a>.</span></label>
+    <div class="checkout-actions"><a href="./#subscription">Annuler et revenir</a><button id="payment-button" type="button" disabled>Valider et passer au paiement</button></div>
+    <p id="payment-message" class="payment-message" role="status"></p>
+  </section>
+</main>
+<script src="commande.js"></script>
+</body></html>
