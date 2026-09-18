@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AlpesEx\Portal\Security;
 
 use DateTimeImmutable;
+use DateTimeZone;
 use PDO;
 use RuntimeException;
 
@@ -21,7 +22,10 @@ final class RateLimiter
         int $windowSeconds
     ): void {
         $clientHash = hash('sha256', $clientIdentifier);
-        $now = new DateTimeImmutable();
+        // MariaDB stores window_started_at with UTC_TIMESTAMP(). Always parse and
+        // compare it in UTC, independently from the Europe/Paris application timezone.
+        $utc = new DateTimeZone('UTC');
+        $now = new DateTimeImmutable('now', $utc);
         $windowStart = $now->modify("-{$windowSeconds} seconds");
 
         $this->pdo->beginTransaction();
@@ -35,7 +39,10 @@ final class RateLimiter
             $select->execute(['action_key' => $action, 'client_hash' => $clientHash]);
             $record = $select->fetch();
 
-            if (!$record || new DateTimeImmutable($record['window_started_at']) < $windowStart) {
+            $recordStartedAt = $record
+                ? new DateTimeImmutable((string) $record['window_started_at'], $utc)
+                : null;
+            if (!$record || $recordStartedAt < $windowStart) {
                 $replace = $this->pdo->prepare(
                     'INSERT INTO request_rate_limits
                         (action_key, client_hash, attempts, window_started_at)
