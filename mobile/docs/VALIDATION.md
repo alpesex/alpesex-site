@@ -22,6 +22,7 @@
 - API native HTTPS, ouverture documentaire et export JSON par partage natif.
 - Versions natives 5.4.18, identifiant provisoire `fr.alpesex.cpmpasm`.
 - Manifeste de confidentialité pour l'API de dates de fichiers.
+- Suppression de l’appel hérité à `ensurePassword`, inexistant, qui bloquait le démarrage.
 - Bouton retour Android raccordé au portefeuille avec confirmation en édition.
 - Étiquettes des boutons conservées lisibles sur téléphone ; prise en compte des encoches.
 - Révision obligatoire pour modifier un projet existant et contrôle du nombre de lignes
@@ -37,18 +38,18 @@
 - Service worker limité aux ressources publiques CPMP, sans effacer les caches d'autres applications.
 - Documents servis en pièce jointe pour ne pas exécuter un HTML utilisateur dans l'origine de l'application.
 
-## Résultats effectivement obtenus localement
+## Résultats effectivement obtenus
 
 | Contrôle | Résultat |
 |---|---|
 | Tests Node de la passerelle (6 scénarios) | Réussis |
 | Compilation JS embarquée avec esbuild | Réussie |
 | Génération/synchronisation Capacitor Android et iOS | Réussie |
-| Analyse syntaxique PHP modifié et test PHP | Réussie avec php-parser ; pas d'exécution PHP locale |
+| Analyse syntaxique PHP modifié et test PHP | Réussie localement ; tests PHP exécutés avec succès dans GitHub |
 | Analyse syntaxique JavaScript de l'interface | Réussie |
 | Comparaison des modèles PC ASM avec l'EXE validé | Identiques |
-| Parcours navigateur mobile/tablette | Bloqué par le lancement Chromium dans cet environnement |
-| Compilation Gradle / Xcode | Non exécutée localement ; workflow GitHub ajouté |
+| Parcours navigateur mobile/tablette | Connexion, portefeuille, PC lecture/modification, DC modification et déconnexion réussis en 390/768/1024 px avec API simulée |
+| Compilation Gradle / Xcode | iOS simulateur réussi sur 386825a ; premier Android bloqué par le paquet SDK tools supprimé, configuration corrigée pour la relance |
 | Recette IONOS et appareils réels | Non réalisée |
 
 Le workflow `mobile-validation.yml` ne déploie rien. Il prévoit tests Node/PHP,
