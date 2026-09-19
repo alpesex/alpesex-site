@@ -22,10 +22,12 @@ try {
     const page = await browser.newPage({ viewport: { width, height: 844 } });
     const errors = [];
     let project, createdProject, revision = 1;
+    const requests = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.route('**/api/**', async route => {
       const url = new URL(route.request().url());
       const action = url.searchParams.get('action');
+      requests.push({action, body: route.request().postData()});
       let body = {}, status = 200;
       if (action === 'session') { status = 401; body = { error: 'AUTHENTICATION_REQUIRED' }; }
       if (action === 'activate') body = { user: {id:1,organizationId:1,email:'smoke@example.test',role:'user'}, activation:{role:'user'} };
@@ -77,7 +79,10 @@ try {
     await page.evaluate(() => openDCProject('SMOKE', true));
     await page.locator('#dcFrame').waitFor({state:'visible'});
     await page.evaluate(() => {activeDcProject.meta.referenceProjet='AUTO-SYNC';dcPersist();});
-    await page.waitForFunction(() => document.getElementById('syncStatus').textContent==='Synchronisé' && Object.keys(window.erpAsmProjects.drafts()).length===0);
+    await page.waitForTimeout(5000);
+    const syncState = await page.evaluate(() => ({status:document.getElementById('syncStatus').textContent,drafts:window.erpAsmProjects.drafts()}));
+    assert.equal(syncState.status, 'Synchronisé', JSON.stringify({syncState,requests}, null, 2));
+    assert.deepEqual(Object.keys(syncState.drafts), [], JSON.stringify({syncState,requests}, null, 2));
     assert.equal(project.meta.referenceProjet,'AUTO-SYNC','DC changes saved automatically');
     await page.evaluate(() => renderPortfolio(false));
     project.meta.nomProjet='Modifié depuis un autre appareil';revision++;
