@@ -57,11 +57,13 @@ final class InviteMember
             $reactivated = false;
             if ($sameOrganization && $user['status'] === 'removed') {
                 $reactivate = $this->pdo->prepare(
-                    "UPDATE users SET status='active' WHERE id=:id AND organization_id=:organization_id AND status='removed'"
+                    "UPDATE users SET status='active',team_manager_id=:team_manager_id
+                     WHERE id=:id AND organization_id=:organization_id AND status='removed'"
                 );
                 $reactivate->execute([
                     'id' => $user['id'],
                     'organization_id' => $organizationId,
+                    'team_manager_id' => $license === 'user' ? $managerId : null,
                 ]);
                 $reactivated = $reactivate->rowCount() === 1;
             }

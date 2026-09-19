@@ -32,7 +32,7 @@ final class RegisterInvitedUser
         $this->pdo->beginTransaction();
         try {
             $statement = $this->pdo->prepare(
-                'SELECT id, organization_id, email, first_name, last_name
+                'SELECT id, organization_id, invited_by_user_id, email, first_name, last_name, intended_license
                  FROM organization_invitations
                  WHERE token_hash = :token_hash AND accepted_at IS NULL AND revoked_at IS NULL
                    AND expires_at > UTC_TIMESTAMP()
@@ -46,16 +46,18 @@ final class RegisterInvitedUser
 
             $user = $this->pdo->prepare(
                 'INSERT INTO users
-                 (organization_id, email, password_hash, first_name, last_name, role, status, email_verified_at)
-                 VALUES (:organization_id, :email, :password_hash, :first_name, :last_name, :role, :status, UTC_TIMESTAMP())'
+                 (organization_id, team_manager_id, email, password_hash, first_name, last_name, role, status, email_verified_at)
+                 VALUES (:organization_id, :team_manager_id, :email, :password_hash, :first_name, :last_name, :role, :status, UTC_TIMESTAMP())'
             );
             $user->execute([
                 'organization_id' => $invitation['organization_id'],
+                'team_manager_id' => $invitation['intended_license'] === 'user' ? $invitation['invited_by_user_id'] : null,
                 'email' => $email,
                 'password_hash' => password_hash($password, PASSWORD_DEFAULT),
                 'first_name' => $invitation['first_name'] ?: 'Utilisateur',
                 'last_name' => $invitation['last_name'] ?: 'Invité',
-                'role' => 'user',
+                'role' => in_array($invitation['intended_license'], ['user', 'manager', 'direction'], true)
+                    ? $invitation['intended_license'] : 'user',
                 'status' => 'active',
             ]);
             $accepted = $this->pdo->prepare('UPDATE organization_invitations SET accepted_at = UTC_TIMESTAMP() WHERE id = :id');

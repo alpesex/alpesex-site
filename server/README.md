@@ -36,3 +36,16 @@ mots de passe et sans envoyer de message.
 - secrets hors de la racine Web et hors de GitHub ;
 - erreurs publiques génériques, détails techniques réservés aux journaux ;
 - aucun endpoint public de test d'envoi.
+# Application mobile et tablette
+
+L’application complète est publiée sous `/application/`. Elle nécessite la migration
+`012_create_mobile_application.sql` et une clé de chiffrement de 32 octets dans le fichier
+privé `/home/www/private/.env` :
+
+```dotenv
+ALPESEX_APPLICATION_KEY=<64 caractères hexadécimaux>
+```
+
+La clé peut être générée sur le serveur avec `openssl rand -hex 32`. Elle ne doit jamais être
+ajoutée au dépôt. Sa perte rendrait les projets et documents centraux illisibles ; elle doit donc
+être sauvegardée dans les mêmes conditions que l’autorité de licences.
