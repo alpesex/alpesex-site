@@ -90,10 +90,11 @@ try {
     await page.evaluate(() => {activeDcProject.meta.referenceProjet='LOCAL-CONFLICT';dcPersist();});
     await page.waitForFunction(() => document.getElementById('syncStatus').textContent.includes('Conflit'));
     assert.equal(await page.evaluate(() => window.erpAsmProjects.drafts().SMOKE.project.meta.referenceProjet),'LOCAL-CONFLICT');
-    await page.locator('#syncStatus').click();
-    await page.getByRole('button',{name:'Reprendre la version Cloud',exact:true}).waitFor();
+    const recoverCloud = page.getByRole('button',{name:'Reprendre la version Cloud',exact:true});
+    if (!await recoverCloud.isVisible()) await page.locator('#syncStatus').click();
+    await recoverCloud.waitFor();
     page.once('dialog',dialog=>dialog.accept());
-    await page.getByRole('button',{name:'Reprendre la version Cloud',exact:true}).click();
+    await recoverCloud.click();
     await page.waitForFunction(() => document.getElementById('projectList').textContent.includes('Version concurrente'));
     assert.equal(await page.evaluate(() => Object.keys(window.erpAsmProjects.drafts()).length),0);
     await page.locator('#logoutButton').click();
