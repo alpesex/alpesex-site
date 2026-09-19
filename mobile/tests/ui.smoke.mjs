@@ -21,7 +21,7 @@ try {
   for (const width of [390, 768, 1024]) {
     const page = await browser.newPage({ viewport: { width, height: 844 } });
     const errors = [];
-    let project, revision = 1;
+    let project, createdProject, revision = 1;
     page.on('pageerror', error => errors.push(error.message));
     await page.route('**/api/**', async route => {
       const url = new URL(route.request().url());
@@ -32,7 +32,9 @@ try {
       if (action === 'projects') body = {projects:[{id:'cloud',localId:'SMOKE',revision,access:'editor',data:project}]};
       if (action === 'project-save') {
         const input=route.request().postDataJSON();
-        if(input.revision!==revision){status=409;body={error:'PROJECT_CONFLICT'};}
+        const localId=input.project?.meta?.portfolioId;
+        if(localId!=='SMOKE'&&input.revision===0){createdProject=input.project;body={id:'cloud-'+localId,revision:1,access:'editor'};}
+        else if(input.revision!==revision){status=409;body={error:'PROJECT_CONFLICT'};}
         else {project=input.project;revision++;body={id:'cloud',revision,access:'editor'};}
       }
       if (action === 'documents-status') body = {documents:[]};
@@ -62,7 +64,7 @@ try {
     await page.locator('#newProjectModal').waitFor({state:'hidden'});
     await page.frameLocator('#adminFrame').locator('body').waitFor({state:'visible'});
     assert.equal(await page.evaluate(name => getProjects().some(item => item.meta.nomProjet === name), `Nouveau projet ${width}`), true, `Project creation ${width}`);
-    assert.equal(project.meta.nomProjet, `Nouveau projet ${width}`, `Cloud project creation ${width}`);
+    assert.equal(createdProject.meta.nomProjet, `Nouveau projet ${width}`, `Cloud project creation ${width}`);
     const createdId = await page.evaluate(name => getProjects().find(item => item.meta.nomProjet === name).meta.portfolioId, `Nouveau projet ${width}`);
     await page.evaluate(id => { const items=getProjects().filter(item=>item.meta.portfolioId!==id);saveProjects(items);renderPortfolio(false); }, createdId);
     project = await page.evaluate(() => projectById('SMOKE'));
