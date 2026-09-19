@@ -1,0 +1,9 @@
+DirectoryIndex index.php
+RewriteEngine On
+RewriteRule ^index\.html$ index.php [END]
+
+<FilesMatch "^(index\.php|index\.html)$">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "private, no-store, max-age=0"
+  </IfModule>
+</FilesMatch>

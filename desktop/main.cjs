@@ -3,16 +3,30 @@ const path = require('node:path');
 const fs = require('node:fs/promises');
 const origin = 'https://alpes-ex.fr';
 const smoke = process.argv.includes('--smoke-test');
-// The validated Windows installation, licence files and local database are untouched.
-app.setPath('userData', path.join(app.getPath('appData'), 'cpmp-asm-cloud-preview'));
+// Reuse the stable V5.4.18 profile so its local portfolio can be queued once
+// for migration to IONOS before the first Cloud refresh.
+const appData = app.getPath('appData');
+const stableProfile = path.join(appData, 'cpmp-asm');
+app.setPath('userData', stableProfile);
 let win;
+async function preserveLegacyProfile() {
+  if (smoke) return;
+  const marker = path.join(stableProfile, '.cloud-migration-5.4.19');
+  try { await fs.access(marker); return; } catch {}
+  const backup = path.join(appData, 'cpmp-asm-v5.4.18-backup');
+  try { await fs.access(stableProfile); await fs.cp(stableProfile, backup, {recursive:true, errorOnExist:true}); }
+  catch (error) { if (error.code !== 'ENOENT' && error.code !== 'ERR_FS_CP_EEXIST') throw error; }
+  await fs.mkdir(stableProfile, {recursive:true});
+  await fs.writeFile(marker, new Date().toISOString());
+}
 function allowedSender(event) {
   if (event.sender !== win.webContents || event.senderFrame !== win.webContents.mainFrame ||
       event.senderFrame.url !== origin + '/application/') throw new Error('Accès refusé');
 }
 function filename(value) { return path.basename(String(value || 'document')).replace(/[<>:"/\\|?*\x00-\x1f]/g, '_'); }
 app.whenReady().then(async () => {
-  const ses = session.fromPartition(smoke ? 'smoke-test' : 'persist:cloud-preview');
+  await preserveLegacyProfile();
+  const ses = session.fromPartition(smoke ? 'smoke-test' : 'persist:cpmp-asm');
   ses.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   ses.protocol.handle('https', async request => {
     const url = new URL(request.url);
@@ -31,7 +45,7 @@ app.whenReady().then(async () => {
       return new Response(await fs.readFile(file), {headers:{'Content-Type':type,'Cache-Control':'no-store'}});
     } catch { return new Response('Not found', {status:404}); }
   });
-  win = new BrowserWindow({width:1360,height:900,show:!smoke,title:'CPMP ASM — Cloud Preview',
+  win = new BrowserWindow({width:1360,height:900,show:!smoke,title:'CPMP ASM',
     webPreferences:{session:ses,preload:path.join(__dirname,'preload.cjs'),sandbox:true,contextIsolation:true,nodeIntegration:false}});
   win.webContents.setWindowOpenHandler(({url}) => url === 'about:blank'
     ? {action:'allow', overrideBrowserWindowOptions:{webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false,preload:''}}}

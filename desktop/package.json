@@ -1,23 +1,41 @@
 {
-  "name": "cpmp-asm-cloud-preview",
-  "version": "5.4.19-preview.1",
+  "name": "cpmp-asm-windows",
+  "version": "5.4.19",
   "private": true,
-  "description": "CPMP ASM Windows — recette du stockage commun mobile/tablette",
+  "description": "CPMP ASM Windows — stockage central commun PC, mobile et tablette",
   "author": "ALPES'Ex",
   "main": "main.cjs",
   "scripts": {
     "build": "node scripts/build.mjs",
     "start": "npm run build && electron .",
-    "dist": "npm run build && electron-builder --win portable --x64 --publish never",
+    "dist": "npm run build && electron-builder --win nsis --x64 --publish never",
     "smoke": "npm run build && electron . --smoke-test"
   },
-  "devDependencies": {"electron": "44.4.3", "electron-builder": "26.15.3"},
+  "devDependencies": {
+    "electron": "44.4.3",
+    "electron-builder": "26.15.3"
+  },
   "build": {
-    "appId": "fr.alpesex.cpmpasm.cloudpreview",
-    "productName": "CPMP ASM Cloud Preview",
+    "appId": "fr.alpesex.cpmpasm",
+    "productName": "CPMP ASM",
     "asar": true,
-    "files": ["main.cjs", "preload.cjs", "www/**/*", "package.json"],
-    "win": {"target": "portable", "signAndEditExecutable": false},
-    "artifactName": "CPMP-ASM-Cloud-Preview-${version}-${arch}.${ext}"
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "www/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "../assets/favicon.ico",
+      "signExecutable": false
+    },
+    "artifactName": "CPMP-ASM-Setup-${version}-${arch}.${ext}",
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   }
 }

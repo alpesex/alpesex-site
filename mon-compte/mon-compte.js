@@ -18,8 +18,14 @@ async function loadAccount(){
     document.querySelector('#organization-status').textContent=organization?.status==='active'?'Organisation active':'Statut à vérifier';
     fillList(document.querySelector('#profile-details'),[['Prénom',user.firstName],['Nom',user.lastName],['Adresse e-mail',user.email],['Profil',isManager?'Gestionnaire':'Utilisateur']]);
     if(organization)fillList(document.querySelector('#organization-details'),[['Raison sociale',organization.name],['Nom commercial',organization.tradeName],['Forme juridique',organization.legalForm],['SIREN',organization.siren],['SIRET',organization.siret],['TVA intracommunautaire',organization.vatNumber],['Adresse',organization.billingAddress1+(organization.billingAddress2?' — '+organization.billingAddress2:'')],['Ville',organization.postalCode+' '+organization.city],['E-mail de facturation',organization.billingEmail],['Plateforme agréée',organization.invoicePlatform]]);
-    loading.hidden=true;dashboard.hidden=false;loadLicenses().catch(error=>{document.querySelector('#licenses-list').innerHTML='<p>'+escapeHtml(error.message)+'</p>'});loadApplicationDevices().catch(error=>{document.querySelector('#application-devices').innerHTML='<p>'+escapeHtml(error.message)+'</p>'});if(isManager)loadTeam().catch(error=>{document.querySelector('#members-list').innerHTML='<p>'+escapeHtml(error.message)+'</p>'});
+    configureApplicationDownload();loading.hidden=true;dashboard.hidden=false;loadLicenses().catch(error=>{document.querySelector('#licenses-list').innerHTML='<p>'+escapeHtml(error.message)+'</p>'});loadApplicationDevices().catch(error=>{document.querySelector('#application-devices').innerHTML='<p>'+escapeHtml(error.message)+'</p>'});if(isManager)loadTeam().catch(error=>{document.querySelector('#members-list').innerHTML='<p>'+escapeHtml(error.message)+'</p>'});
   }catch(error){loading.textContent=error.message}
+}
+function configureApplicationDownload(){
+  const agent=navigator.userAgent||'',mobile=/Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(agent),windows=/Windows/i.test(agent);
+  document.querySelector('#mobile-application').hidden=!mobile;
+  document.querySelector('#windows-application').hidden=mobile||!windows;
+  document.querySelector('#unsupported-application').hidden=mobile||windows;
 }
 document.querySelector('#logout').addEventListener('click',async()=>{
   const button=document.querySelector('#logout');button.disabled=true;
