@@ -12,3 +12,7 @@ button,input,select,textarea{min-height:44px}
 .shellbar{padding-top:max(10px,env(safe-area-inset-top));padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
 .content{padding-bottom:env(safe-area-inset-bottom)}
 @media(max-width:560px){.shellbar{flex-wrap:wrap;gap:8px}.shell-actions{width:100%;justify-content:flex-start;flex-wrap:wrap}.shell-actions button{font-size:.78rem;padding:8px 10px}.shell-actions button::first-letter{font-size:inherit}input,select,textarea{font-size:16px}}
+.install-app-button{border-color:rgba(214,107,44,.55)!important;background:#fff7f0!important;color:#8b461e!important}
+.shell-actions .install-app-button{background:rgba(214,107,44,.18)!important;color:#fff!important}
+.install-dialog{position:relative;text-align:left}.install-close{position:absolute;right:14px;top:12px;border:0;background:transparent;font-size:1.8rem;line-height:1;color:#68747c;cursor:pointer}.install-logo img{width:72px;height:72px;border-radius:18px;display:block;margin-bottom:16px}.install-steps{margin:16px 0;padding-left:24px;display:grid;gap:12px;color:#26343b}.install-steps li{padding-left:5px;line-height:1.4}.install-note{padding:12px 14px;border-radius:12px;background:#eef3f5;color:#49606c;font-size:.82rem;line-height:1.45}.install-note:empty{display:none}
+@media(display-mode:standalone){.install-app-button{display:none!important}}

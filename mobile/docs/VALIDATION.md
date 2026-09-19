@@ -124,3 +124,14 @@ maintenant sauvegarde automatique, récupération d'une modification distante,
 conservation d'un conflit puis abandon explicite de la copie locale en faveur
 du Cloud (390/768/1024 px). Le dossier `mobile/store/` contient la fiche française
 et les étapes de publication, sans prétendre à une soumission effective.
+
+## Distribution directe depuis Internet
+
+La PWA est désormais la voie de distribution immédiate : URL canonique
+`/application/`, manifeste enrichi, icônes installables, bouton d'installation et
+instructions Safari/Chrome/Edge. Le service worker utilise le réseau en priorité
+pour la page et ne met en cache aucun compte, projet, document ou appel API.
+L'espace client présente le lien « Ouvrir et installer CPMP – ASM ».
+
+La disponibilité réelle dépend encore d'un déploiement HTTPS sur IONOS et d'une
+recette sur appareils physiques. Voir `application/INSTALLATION.md`.

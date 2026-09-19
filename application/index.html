@@ -7,6 +7,9 @@
 <meta name="theme-color" content="#11181d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CPMP – ASM">
+<meta name="application-name" content="CPMP – ASM">
+<meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="/application/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <script src="/application/sync-queue.js"></script>
@@ -66,12 +69,13 @@ button,input{font:inherit}
 <link rel="stylesheet" href="/application/mobile.css">
 </head>
 <body>
-<section id="authScreen" class="auth-screen"><div class="auth-card"><div class="auth-brand"><span class="mark"></span><div><h1>CPMP – ASM</h1><p>Centre de Pilotage Multi‑Projets</p><p>ALPES'EX · Anticiper · Sécuriser · Maîtriser</p></div></div><div id="authWelcome"><h2>Bienvenue</h2><p>Votre licence utilisateur est enregistrée dans l’application.</p><div class="auth-choices"><button class="primary" onclick="showAuthForm('login')">Connexion</button></div><button id="signupChoice" class="ghost hidden" type="button"></button><div class="auth-choices"><button onclick="showAuthForm('recover')">Mot de passe oublié</button></div></div><form id="authForm" class="auth-form hidden" onsubmit="submitAuth(event)"><h2 id="authFormTitle"></h2><label id="authLicenseLabel" class="hidden">Licence utilisateur enregistrée<textarea id="authLicense" rows="4" autocomplete="off" placeholder="Collez ici la licence attribuée depuis votre espace ALPES’Ex"></textarea></label><label id="authCompanyLabel" class="hidden">Organisation<input id="authCompany" autocomplete="organization"></label><label id="authManagerLabel" class="hidden">Utilisateur<input id="authManager" autocomplete="name"></label><label id="authEmailLabel">Adresse e-mail de la licence<input id="authEmail" type="email" required autocomplete="email"></label><label id="authPasswordLabel"><span id="authPasswordCaption">Mot de passe</span><input id="authPassword" type="password" minlength="12" required autocomplete="current-password"></label><label id="authRememberLabel" class="auth-remember"><input id="authRemember" type="checkbox"> Se souvenir de moi sur cet appareil</label><label id="authNewPasswordLabel" class="hidden">Nouveau mot de passe<input id="authNewPassword" type="password" minlength="12" autocomplete="new-password"></label><label id="authConfirmPasswordLabel" class="hidden">Confirmer le nouveau mot de passe<input id="authConfirmPassword" type="password" minlength="12" autocomplete="new-password"></label><div id="authError" class="auth-error"></div><div class="dialog-actions"><button type="button" onclick="showAuthWelcome()">Retour</button><button class="primary" type="submit">Se connecter</button></div></form></div></section>
+<section id="authScreen" class="auth-screen"><div class="auth-card"><div class="auth-brand"><span class="mark"></span><div><h1>CPMP – ASM</h1><p>Centre de Pilotage Multi‑Projets</p><p>ALPES'EX · Anticiper · Sécuriser · Maîtriser</p></div></div><div id="authWelcome"><h2>Bienvenue</h2><p>Votre licence utilisateur est enregistrée dans l’application.</p><div class="auth-choices"><button class="primary" onclick="showAuthForm('login')">Connexion</button><button class="install-app-button" type="button" data-install-app>Installer l’application</button></div><button id="signupChoice" class="ghost hidden" type="button"></button><div class="auth-choices"><button onclick="showAuthForm('recover')">Mot de passe oublié</button></div></div><form id="authForm" class="auth-form hidden" onsubmit="submitAuth(event)"><h2 id="authFormTitle"></h2><label id="authLicenseLabel" class="hidden">Licence utilisateur enregistrée<textarea id="authLicense" rows="4" autocomplete="off" placeholder="Collez ici la licence attribuée depuis votre espace ALPES’Ex"></textarea></label><label id="authCompanyLabel" class="hidden">Organisation<input id="authCompany" autocomplete="organization"></label><label id="authManagerLabel" class="hidden">Utilisateur<input id="authManager" autocomplete="name"></label><label id="authEmailLabel">Adresse e-mail de la licence<input id="authEmail" type="email" required autocomplete="email"></label><label id="authPasswordLabel"><span id="authPasswordCaption">Mot de passe</span><input id="authPassword" type="password" minlength="12" required autocomplete="current-password"></label><label id="authRememberLabel" class="auth-remember"><input id="authRemember" type="checkbox"> Se souvenir de moi sur cet appareil</label><label id="authNewPasswordLabel" class="hidden">Nouveau mot de passe<input id="authNewPassword" type="password" minlength="12" autocomplete="new-password"></label><label id="authConfirmPasswordLabel" class="hidden">Confirmer le nouveau mot de passe<input id="authConfirmPassword" type="password" minlength="12" autocomplete="new-password"></label><div id="authError" class="auth-error"></div><div class="dialog-actions"><button type="button" onclick="showAuthWelcome()">Retour</button><button class="primary" type="submit">Se connecter</button></div></form></div></section>
 <div class="shell">
  <div class="shellbar">
   <div class="brand"><span class="mark"></span><div><strong>CPMP – ASM · ALPES'EX</strong><small>Centre de Pilotage Multi‑Projets · Anticiper · Sécuriser · Maîtriser</small></div></div>
   <div class="shell-actions">
    <span class="mode-label" id="modeLabel">Portefeuille</span>
+   <button class="install-app-button" type="button" data-install-app>Installer</button>
    <button id="loadDataTopButton" onclick="openBackupBrowser()">Charger les données</button>
    <button id="portfolioButton" class="hidden">Liste des projets</button>
    <button id="pcButton" class="hidden">PC ASM</button>
@@ -114,6 +118,8 @@ button,input{font:inherit}
  </div></section>
  </div>
 </div>
+
+<div class="modal" id="installAppModal" role="dialog" aria-modal="true" aria-labelledby="installAppTitle"><div class="dialog install-dialog"><button class="install-close" type="button" aria-label="Fermer">×</button><div class="install-logo"><img src="/assets/icon-192.png" alt=""></div><h2 id="installAppTitle">Installer CPMP – ASM</h2><p id="installAppIntro">Installez l’application pour l’ouvrir depuis votre écran d’accueil, en plein écran.</p><ol id="installAppSteps" class="install-steps"></ol><div id="installAppNote" class="install-note"></div><div class="dialog-actions"><button type="button" class="install-cancel">Fermer</button><button type="button" class="primary" id="installAppConfirm">Installer</button></div></div></div>
 
 <div class="modal" id="passwordModal"><div class="dialog"><h2 id="passwordTitle">Mot de passe</h2><p id="passwordHelp"></p><div class="field"><label>Mot de passe</label><input id="passwordInput" type="password"></div><div class="message" id="passwordMessage"></div><div class="dialog-actions"><button onclick="closePassword()">Annuler</button><button class="primary" id="passwordConfirm">Valider</button></div></div></div>
 <div class="modal" id="privacyModal"><div class="dialog"><h2>Confidentialité</h2><p>Modifiez votre mot de passe personnel, utilisé pour la connexion chargé d’affaires et l’accès à l’Administration.</p><div class="field"><label>Mot de passe actuel</label><input id="currentPassword" type="password"></div><div class="field"><label>Nouveau mot de passe</label><input id="newPassword" type="password"></div><div class="field"><label>Confirmation</label><input id="confirmPassword" type="password"></div><div class="message" id="privacyMessage"></div><div class="dialog-actions"><button onclick="closePrivacy()">Annuler</button><button class="primary" onclick="changePassword()">Enregistrer</button></div></div></div>
@@ -501,5 +507,6 @@ getProjects();
 initializeERPASM();
 </script>
 <script src="/application/auto-sync.js"></script>
+<script src="/application/install.js"></script>
 </body>
 </html>

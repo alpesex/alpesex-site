@@ -11,7 +11,7 @@ const server = createServer(async (req, res) => {
     if (p.endsWith('/')) p += 'index.html';
     const f = path.resolve(root, '.' + p);
     if (!f.startsWith(root)) throw new Error('Invalid path');
-    res.setHeader('Content-Type', p.endsWith('.js') ? 'application/javascript' : p.endsWith('.css') ? 'text/css' : 'text/html');
+    res.setHeader('Content-Type', p.endsWith('.js') ? 'application/javascript' : p.endsWith('.css') ? 'text/css' : p.endsWith('.webmanifest') ? 'application/manifest+json' : p.endsWith('.png') ? 'image/png' : 'text/html');
     res.end(await readFile(f));
   } catch { res.statusCode = 404; res.end(); }
 }).listen(0, '127.0.0.1');
@@ -40,6 +40,12 @@ try {
     });
     await page.goto(`http://127.0.0.1:${server.address().port}/application/`);
     await page.locator('#authEmail').waitFor({state:'visible'});
+    if (width === 390) {
+      await page.locator('[data-install-app]').first().click();
+      await page.locator('#installAppModal').waitFor({state:'visible'});
+      assert.match(await page.locator('#installAppSteps').innerText(), /Installer l’application|Ajouter à l’écran d’accueil/);
+      await page.locator('.install-cancel').click();
+    }
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `Login overflow ${width}`);
     project = await page.evaluate(() => {const p=normalizeProject(EMPTY_PROJECT);p.meta.portfolioId='SMOKE';p.meta.nomProjet='Projet test mobile';return p;});
     await page.locator('#authEmail').fill('smoke@example.test');
@@ -79,4 +85,12 @@ try {
     console.log(`Login, portfolio, PC view/edit, DC edit, automatic save/pull, conflict recovery, logout: OK (${width}px; mocked API)`);
     await page.close();
   }
+  const ios = await browser.newContext({userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1',viewport:{width:390,height:844}});
+  const iosPage = await ios.newPage();
+  await iosPage.route('**/api/**', route => route.fulfill({status:401,contentType:'application/json',body:'{"error":"AUTHENTICATION_REQUIRED"}'}));
+  await iosPage.goto(`http://127.0.0.1:${server.address().port}/application/`);
+  await iosPage.locator('[data-install-app]').first().click();
+  assert.match(await iosPage.locator('#installAppSteps').innerText(), /Safari[\s\S]*Partager[\s\S]*Sur l’écran d’accueil/);
+  console.log('iPhone/iPad web installation guidance: OK');
+  await ios.close();
 } finally { await browser.close(); server.close(); }
