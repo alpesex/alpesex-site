@@ -35,7 +35,7 @@ jobs:
         working-directory: mobile
       - run: npx playwright install --with-deps chromium && npm run test:ui
         working-directory: mobile
-      - run: php -l server/public/api/application/index.php && php -l server/src/Application/ApplicationAccess.php && php server/tests/application.php
+      - run: php -l application/index.php && php -l server/public/api/downloads/windows/index.php && php -l server/public/api/application/index.php && php -l server/src/Application/ApplicationAccess.php && php server/tests/application.php
       - run: python3 server/tests/integration.py
   android:
     runs-on: ubuntu-latest
@@ -93,5 +93,5 @@ jobs:
         working-directory: desktop
       - uses: actions/upload-artifact@v4
         with:
-          name: cpmp-windows-cloud-preview-test-only
+          name: cpmp-windows-installer-test-only
           path: desktop/dist/*.exe
