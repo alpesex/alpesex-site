@@ -93,7 +93,7 @@ button,input{font:inherit}
      <div><h1>Portefeuille d’affaires</h1><p id="portfolioSubtitle">Sélectionnez un projet pour ouvrir son tableau de bord.</p></div>
      <div class="portfolio-actions" id="portfolioAdminActions">
       <button class="primary" id="addProjectButton">+ Nouveau projet</button>
-      <button class="secondary" id="importProjectButton">Importer des données</button>
+      <button class="secondary" id="importProjectButton">Importer une sauvegarde Windows</button>
       <button class="secondary hidden" id="importMultiProjectButton">Importer plusieurs projets</button>
       <button class="ghost" id="publishAllProjectsButton">Enregistrer</button>
       <input id="portfolioImport" type="file" accept=".json,application/json">
@@ -413,7 +413,7 @@ async function confirmCreateProject(event){
  newProjectModal.classList.remove("open");newProjectConfirm.disabled=false;newProjectCancel.disabled=false;showAdmin(p)
 }
 addProjectButton.onclick=createNewProject;
-importProjectButton.onclick=openBackupBrowser;
+importProjectButton.onclick=()=>portfolioImport.click();
 importMultiProjectButton.onclick=()=>portfolioMultiImport.click();
 publishAllProjectsButton.onclick=publishAllProjects;
 publishAllTopButton.onclick=publishAllProjects;
