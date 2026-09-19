@@ -49,7 +49,7 @@ try {
       assert.match(await page.locator('#installAppSteps').innerText(), /Installer l’application|Ajouter à l’écran d’accueil/);
       await page.locator('.install-cancel').click();
     }
-    await page.getByRole('button',{name:'Connexion',exact:true}).click();
+    if (!await page.locator('#authEmail').isVisible()) await page.getByRole('button',{name:'Connexion',exact:true}).click();
     await page.locator('#authEmail').waitFor({state:'visible'});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `Login overflow ${width}`);
     project = await page.evaluate(() => {const p=normalizeProject(EMPTY_PROJECT);p.meta.portfolioId='SMOKE';p.meta.nomProjet='Projet test mobile';return p;});
