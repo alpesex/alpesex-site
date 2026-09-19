@@ -47,6 +47,12 @@ test('first Cloud activation queues the existing V5.4.18 portfolio', async () =>
   assert.equal(drafts['legacy-project'].project.meta.nomProjet, 'Projet V5.4.18');
   assert.equal(drafts['legacy-project'].revision, 0);
 });
+test('fresh V5.4.18 demonstration data is not uploaded as a user portfolio', async () => {
+  const x = setup([{body:{}},{body:{user:{organizationId:2,id:3,email:'new@example.test',role:'user'},activation:{role:'user'}}}]);
+  x.data.set('pcasm_pro_projects', JSON.stringify([{meta:{portfolioId:'demo',nomProjet:'Démonstration'}}]));
+  await x.window.erpAsmAuth.login({email:'new@example.test',password:'unused',licenseToken:'token'});
+  assert.equal(x.data.has('alpesex.application.drafts'), false);
+});
 test('backup adapter does not publish a project a second time', async () => {
   const x = setup([]);
   await x.window.erpAsmBackups.save({data:{meta:{portfolioId:'p'}}});

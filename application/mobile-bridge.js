@@ -7,6 +7,9 @@
   const licenseKey = 'alpesex.application.license';
   const deviceKey = 'alpesex.application.device';
   const revisionKey = 'alpesex.application.revisions';
+  // Capture this before the V5.4.18 interface can seed its demonstration data.
+  // A pre-existing value is a real Windows/PWA portfolio eligible for migration.
+  const hadLegacyPortfolio = localStorage.getItem('pcasm_pro_projects') !== null;
   let currentSession = null;
   let projectCache = [];
 
@@ -99,7 +102,7 @@
       const account = `${currentSession.organizationId}:${currentSession.id}`;
       const previousAccount = localStorage.getItem('alpesex.application.account');
       let legacyProjects = [];
-      if (previousAccount === null) {
+      if (previousAccount === null && hadLegacyPortfolio) {
         try { legacyProjects = JSON.parse(localStorage.getItem('pcasm_pro_projects') || '[]'); }
         catch (_) { legacyProjects = []; }
       }
