@@ -69,7 +69,8 @@ try {
             $user,
             trim((string) ($input['licenseToken'] ?? '')),
             strtolower(trim((string) ($input['deviceIdentifier'] ?? ''))),
-            trim((string) ($input['deviceName'] ?? ''))
+            trim((string) ($input['deviceName'] ?? '')),
+            trim((string) ($input['platform'] ?? 'web'))
         );
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['user' => $user, 'activation' => $activation], JSON_UNESCAPED_UNICODE);
@@ -81,6 +82,19 @@ try {
             appFail(401, 'LICENSE_ACTIVATION_REQUIRED');
         }
         $access->assertActiveDevice($user);
+    }
+
+    if ($action === 'verify-password' && $method === 'POST') {
+        (new \AlpesEx\Portal\Security\RateLimiter($pdo))->assertAllowed('application-password', (string) $user['id'], 10, 3600);
+        $input = appJson();
+        $query = $pdo->prepare('SELECT password_hash FROM users WHERE id=:id');
+        $query->execute(['id' => $user['id']]);
+        if (!password_verify((string) ($input['password'] ?? ''), (string) $query->fetchColumn())) {
+            appFail(403, 'PASSWORD_INVALID');
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => true]);
+        exit;
     }
 
     if ($action === 'session' && $method === 'GET') {
@@ -177,6 +191,9 @@ try {
         $row = $existing->fetch();
         $plain = json_encode($project, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
         if (!is_array($row)) {
+            if ((int) ($input['revision'] ?? 0) !== 0) {
+                appFail(409, 'PROJECT_CONFLICT');
+            }
             $id = appUuid();
             $encoded = $cipher->encrypt($plain, 'project:' . $id);
             $insert = $pdo->prepare(
@@ -189,7 +206,10 @@ try {
             if ($access->projectAccess($user, $row) !== 'editor') {
                 appFail(403, 'READ_ONLY');
             }
-            $expected = (int) ($input['revision'] ?? $row['revision']);
+            $expected = filter_var($input['revision'] ?? null, FILTER_VALIDATE_INT);
+            if ($expected === false || $expected === null || $expected < 1) {
+                appFail(409, 'PROJECT_CONFLICT');
+            }
             if ($expected !== (int) $row['revision']) {
                 appFail(409, 'PROJECT_CONFLICT');
             }
@@ -200,6 +220,9 @@ try {
                  WHERE id=:id AND revision=:revision'
             );
             $update->execute(['name' => $name, 'project_data' => $encoded, 'id' => $id, 'revision' => $expected]);
+            if ($update->rowCount() !== 1) {
+                appFail(409, 'PROJECT_CONFLICT');
+            }
             $revision = $expected + 1;
         }
         header('Content-Type: application/json; charset=utf-8');
@@ -300,9 +323,9 @@ try {
             appFail(404, 'DOCUMENT_NOT_FOUND');
         }
         $plainDocument = $cipher->decryptBytes(file_get_contents($file) ?: '', 'document:' . $document['id']);
-        header('Content-Type: ' . $document['media_type']);
+        header('Content-Type: application/octet-stream');
         header('Content-Length: ' . strlen($plainDocument));
-        header("Content-Disposition: inline; filename*=UTF-8''" . rawurlencode((string) $document['file_name']));
+        header("Content-Disposition: attachment; filename*=UTF-8''" . rawurlencode((string) $document['file_name']));
         echo $plainDocument;
         exit;
     }

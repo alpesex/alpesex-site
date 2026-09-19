@@ -8,3 +8,7 @@ button,input,select,textarea{min-height:44px}
 @media(max-width:560px){
   .brand strong{font-size:.78rem}.shell-actions button{font-size:0;padding:8px}.shell-actions button::first-letter{font-size:.8rem}.finance-kpis{grid-template-columns:1fr}.portfolio-actions{width:100%}.portfolio-actions button{flex:1}.dc-table,.portfolio-table{font-size:.72rem}
 }
+/* Keep actual action labels readable on phones and respect device cut-outs. */
+.shellbar{padding-top:max(10px,env(safe-area-inset-top));padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
+.content{padding-bottom:env(safe-area-inset-bottom)}
+@media(max-width:560px){.shellbar{flex-wrap:wrap;gap:8px}.shell-actions{width:100%;justify-content:flex-start;flex-wrap:wrap}.shell-actions button{font-size:.78rem;padding:8px 10px}.shell-actions button::first-letter{font-size:inherit}input,select,textarea{font-size:16px}}

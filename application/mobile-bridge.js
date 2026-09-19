@@ -1,8 +1,9 @@
 (function () {
   'use strict';
 
-  const API = '/api/application/';
-  const AUTH = '/api/auth/';
+  const origin = window.cpmpNative?.origin || '';
+  const API = origin + '/api/application/';
+  const AUTH = origin + '/api/auth/';
   const licenseKey = 'alpesex.application.license';
   const deviceKey = 'alpesex.application.device';
   const revisionKey = 'alpesex.application.revisions';
@@ -26,7 +27,7 @@
   }
 
   async function request(url, options) {
-    const response = await fetch(url, { credentials: 'same-origin', ...options });
+    const response = await fetch(url, { credentials: 'include', ...options });
     const type = response.headers.get('content-type') || '';
     const body = type.includes('application/json') ? await response.json().catch(() => ({})) : null;
     if (!response.ok) throw new Error(errorText(body?.error || body?.message));
@@ -61,7 +62,7 @@
   async function projects() {
     const result = await request(API + '?action=projects');
     projectCache = result.projects || [];
-    projectCache.forEach(item => saveRevision(item.localId, item.revision));
+    // Revisions belong to the loaded snapshot, never to a background listing.
     return projectCache;
   }
 
@@ -90,29 +91,41 @@
       const token = String(payload.licenseToken || localStorage.getItem(licenseKey) || '').trim();
       const role = String(claims(token).role || 'user').toLowerCase();
       await request(AUTH + 'login/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: payload.email, password: payload.password, profileType: role === 'manager' ? 'manager' : 'user', remember: Boolean(payload.rememberMe) }) });
-      const activated = await request(API + '?action=activate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ licenseToken: token, deviceIdentifier: deviceIdentifier(), deviceName: `${navigator.platform || 'Mobile'} - CPMP ASM` }) });
+      const activated = await request(API + '?action=activate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ licenseToken: token, deviceIdentifier: deviceIdentifier(), deviceName: `${navigator.platform || 'Mobile'} - CPMP ASM`, platform: window.cpmpNative?.platform || 'web' }) });
       localStorage.setItem(licenseKey, token);
       currentSession = activated.user;
+      const account = `${currentSession.organizationId}:${currentSession.id}`;
+      if (localStorage.getItem('alpesex.application.account') !== account) {
+        localStorage.removeItem('pcasm_pro_projects');
+        localStorage.removeItem(revisionKey);
+      }
+      localStorage.setItem('alpesex.application.account', account);
+      projectCache = [];
       const effectiveRole = activated.activation.role || activated.user.role;
       return { company: 'Organisation ASM', manager: activated.user.email, email: activated.user.email, role: effectiveRole, mode: effectiveRole === 'direction' ? 'viewer' : 'manager', offline: false, mustChangePassword: false };
     },
     register() { throw new Error('Créez votre compte depuis alpes-ex.fr.'); },
-    forgotPassword() { window.open('/compte/', '_blank'); return Promise.resolve({ message: 'Utilisez « Mot de passe oublié » sur alpes-ex.fr.' }); },
+    forgotPassword() { if (window.cpmpNative) window.cpmpNative.openAccount(); else window.open('/compte/', '_blank', 'noopener'); return Promise.resolve({ message: 'Utilisez « Mot de passe oublié » sur alpes-ex.fr.' }); },
     changePassword() { throw new Error('Modifiez votre mot de passe depuis alpes-ex.fr.'); },
-    verifyPassword() { return Promise.resolve({ ok: true }); },
+    verifyPassword(password) { return request(API + '?action=verify-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) }); },
     async session() { return currentSession; },
     async logout() {
       await request(AUTH + 'logout/', { method: 'POST' }).catch(() => null);
       currentSession = null; projectCache = [];
+      localStorage.removeItem('pcasm_pro_projects');
+      localStorage.removeItem(revisionKey);
+      localStorage.removeItem(licenseKey);
+      localStorage.removeItem('alpesex.application.account');
       return true;
     }
   };
 
   window.erpAsmProjects = {
     async list() { return { projects: await projects() }; },
+    acceptSnapshot(items) { items.forEach(item => saveRevision(item.localId, item.revision)); },
     async save(project) {
       const localId = String(project?.meta?.portfolioId || '');
-      const result = await request(API + '?action=project-save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project, revision: revisions()[localId] }) });
+      const result = await request(API + '?action=project-save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project, revision: revisions()[localId] ?? 0 }) });
       saveRevision(localId, result.revision);
       projectCache = projectCache.filter(item => item.localId !== localId);
       projectCache.push({ id: result.id, localId, revision: result.revision, access: result.access, data: project, ownerEmail: currentSession?.email || '' });
@@ -131,6 +144,7 @@
       const item = await cloudProject(payload.project);
       const file = await new Promise(resolve => {
         const input = document.createElement('input'); input.type = 'file'; input.style.display = 'none';
+        input.oncancel = () => { input.remove(); resolve(null); };
         input.onchange = () => { const selected = input.files?.[0] || null; input.remove(); resolve(selected); };
         document.body.appendChild(input); input.click();
       });
@@ -142,7 +156,8 @@
     async open(payload) {
       const item = await cloudProject(payload.project);
       const url = API + '?action=document-open&projectId=' + encodeURIComponent(item.id) + '&ref=' + encodeURIComponent(payload.document.ref);
-      window.open(url, '_blank', 'noopener');
+      if (window.cpmpNative) await window.cpmpNative.openDocument(url, payload.document.fileName || payload.document.ref);
+      else window.open(url, '_blank', 'noopener');
       return { ok: true };
     }
   };
@@ -158,14 +173,10 @@
       return { data: item.data };
     },
     async save(payload) {
-      if (Array.isArray(payload.data?.projects)) {
-        for (const project of payload.data.projects) await window.erpAsmProjects.save(project);
-      } else if (Array.isArray(payload.data)) {
-        for (const project of payload.data) await window.erpAsmProjects.save(project);
-      } else if (payload.data?.meta) await window.erpAsmProjects.save(payload.data);
+      // Project publication already persists the central snapshot. Do not write it twice.
       return { ok: true };
     }
   };
 
-  if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/application/service-worker.js').catch(() => null));
+  if (!window.cpmpNative && 'serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/application/service-worker.js').catch(() => null));
 })();

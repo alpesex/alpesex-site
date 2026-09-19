@@ -41,56 +41,66 @@ final class ApplicationAccess
     }
 
     /** @param array{id:int,organizationId:int,email:string,role:string} $user */
-    public function activateDevice(array $user, string $licenseToken, string $deviceIdentifier, string $deviceName): array
+    public function activateDevice(array $user, string $licenseToken, string $deviceIdentifier, string $deviceName, string $platform = 'web'): array
     {
         if (!preg_match('/^[a-f0-9]{64}$/', $deviceIdentifier)) {
             throw new RuntimeException('DEVICE_INVALID', 422);
         }
-        $license = $this->pdo->prepare(
-            "SELECT id,license_role,status,expires_at,assigned_user_id,assigned_email
-             FROM organization_license_registry
-             WHERE organization_id=:organization_id AND token_hash=:token_hash AND license_type='user' LIMIT 1"
-        );
-        $license->execute([
-            'organization_id' => $user['organizationId'],
-            'token_hash' => hash('sha256', $licenseToken),
-        ]);
-        $row = $license->fetch();
-        $expired = is_array($row) && $row['expires_at'] !== null && strtotime((string) $row['expires_at'] . ' UTC') <= time();
-        if (!is_array($row) || $row['status'] !== 'active' || $expired) {
-            throw new RuntimeException('LICENSE_INVALID', 403);
+        if (!in_array($platform, ['web', 'ios', 'android', 'windows'], true)) {
+            throw new RuntimeException('DEVICE_INVALID', 422);
         }
-        if ((int) ($row['assigned_user_id'] ?? 0) !== $user['id']
-            || strtolower((string) ($row['assigned_email'] ?? '')) !== strtolower($user['email'])) {
-            throw new RuntimeException('LICENSE_ACCOUNT_MISMATCH', 403);
-        }
-        $existing = $this->pdo->prepare(
-            'SELECT id,status FROM application_devices WHERE license_registry_id=:license_id AND device_identifier=:device_identifier LIMIT 1'
-        );
-        $existing->execute(['license_id' => $row['id'], 'device_identifier' => $deviceIdentifier]);
-        $device = $existing->fetch();
-        if (is_array($device) && $device['status'] === 'revoked') {
-            throw new RuntimeException('DEVICE_REVOKED', 403);
-        }
-        if (!is_array($device)) {
-            $count = $this->pdo->prepare("SELECT COUNT(*) FROM application_devices WHERE license_registry_id=:license_id AND status='active'");
-            $count->execute(['license_id' => $row['id']]);
-            if ((int) $count->fetchColumn() >= 3) {
-                throw new RuntimeException('DEVICE_LIMIT_REACHED', 403);
-            }
-            $insert = $this->pdo->prepare(
-                "INSERT INTO application_devices
-                 (organization_id,user_id,license_registry_id,device_identifier,device_name,platform)
-                 VALUES (:organization_id,:user_id,:license_id,:device_identifier,:device_name,'web')"
+        $this->pdo->beginTransaction();
+        try {
+            $license = $this->pdo->prepare(
+                "SELECT id,license_role,status,expires_at,assigned_user_id,assigned_email
+                 FROM organization_license_registry
+                 WHERE organization_id=:organization_id AND token_hash=:token_hash AND license_type='user' LIMIT 1 FOR UPDATE"
             );
-            $insert->execute([
-                'organization_id' => $user['organizationId'], 'user_id' => $user['id'],
-                'license_id' => $row['id'], 'device_identifier' => $deviceIdentifier,
-                'device_name' => mb_substr(trim($deviceName) ?: 'Mobile / tablette', 0, 190),
+            $license->execute([
+                'organization_id' => $user['organizationId'],
+                'token_hash' => hash('sha256', $licenseToken),
             ]);
-        } else {
-            $touch = $this->pdo->prepare('UPDATE application_devices SET last_seen_at=UTC_TIMESTAMP(),device_name=:device_name WHERE id=:id');
-            $touch->execute(['device_name' => mb_substr(trim($deviceName) ?: 'Mobile / tablette', 0, 190), 'id' => $device['id']]);
+            $row = $license->fetch();
+            $expired = is_array($row) && $row['expires_at'] !== null && strtotime((string) $row['expires_at'] . ' UTC') <= time();
+            if (!is_array($row) || $row['status'] !== 'active' || $expired) {
+                throw new RuntimeException('LICENSE_INVALID', 403);
+            }
+            if ((int) ($row['assigned_user_id'] ?? 0) !== $user['id']
+                || strtolower((string) ($row['assigned_email'] ?? '')) !== strtolower($user['email'])) {
+                throw new RuntimeException('LICENSE_ACCOUNT_MISMATCH', 403);
+            }
+            $existing = $this->pdo->prepare(
+                'SELECT id,status FROM application_devices WHERE license_registry_id=:license_id AND device_identifier=:device_identifier LIMIT 1'
+            );
+            $existing->execute(['license_id' => $row['id'], 'device_identifier' => $deviceIdentifier]);
+            $device = $existing->fetch();
+            if (is_array($device) && $device['status'] === 'revoked') {
+                throw new RuntimeException('DEVICE_REVOKED', 403);
+            }
+            if (!is_array($device)) {
+                $count = $this->pdo->prepare("SELECT COUNT(*) FROM application_devices WHERE license_registry_id=:license_id AND status='active'");
+                $count->execute(['license_id' => $row['id']]);
+                if ((int) $count->fetchColumn() >= 3) {
+                    throw new RuntimeException('DEVICE_LIMIT_REACHED', 403);
+                }
+                $insert = $this->pdo->prepare(
+                    "INSERT INTO application_devices
+                     (organization_id,user_id,license_registry_id,device_identifier,device_name,platform)
+                     VALUES (:organization_id,:user_id,:license_id,:device_identifier,:device_name,:platform)"
+                );
+                $insert->execute([
+                    'organization_id' => $user['organizationId'], 'user_id' => $user['id'],
+                    'license_id' => $row['id'], 'device_identifier' => $deviceIdentifier, 'platform' => $platform,
+                    'device_name' => mb_substr(trim($deviceName) ?: 'Mobile / tablette', 0, 190),
+                ]);
+            } else {
+                $touch = $this->pdo->prepare('UPDATE application_devices SET last_seen_at=UTC_TIMESTAMP(),device_name=:device_name WHERE id=:id');
+                $touch->execute(['device_name' => mb_substr(trim($deviceName) ?: 'Mobile / tablette', 0, 190), 'id' => $device['id']]);
+            }
+            $this->pdo->commit();
+        } catch (\Throwable $exception) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $exception;
         }
         $_SESSION['application_license_id'] = (int) $row['id'];
         $_SESSION['application_device'] = $deviceIdentifier;
@@ -106,7 +116,7 @@ final class ApplicationAccess
             throw new RuntimeException('LICENSE_ACTIVATION_REQUIRED', 401);
         }
         $query = $this->pdo->prepare(
-            "SELECT d.id,r.status,r.expires_at,o.status AS organization_status,
+            "SELECT d.id,r.status,r.expires_at,r.assigned_user_id,r.assigned_email,o.status AS organization_status,
                     parent.status AS parent_status,parent.expires_at AS parent_expires_at
              FROM application_devices d
              INNER JOIN organization_license_registry r ON r.id=d.license_registry_id
@@ -127,7 +137,9 @@ final class ApplicationAccess
         $expired = is_array($row) && $row['expires_at'] !== null && strtotime((string) $row['expires_at'] . ' UTC') <= time();
         $parentExpired = is_array($row) && $row['parent_expires_at'] !== null && strtotime((string) $row['parent_expires_at'] . ' UTC') <= time();
         if (!is_array($row) || $row['status'] !== 'active' || $row['organization_status'] !== 'active'
-            || $row['parent_status'] !== 'active' || $expired || $parentExpired) {
+            || $row['parent_status'] !== 'active' || $expired || $parentExpired
+            || (int) $row['assigned_user_id'] !== $user['id']
+            || strtolower((string) $row['assigned_email']) !== strtolower($user['email'])) {
             unset($_SESSION['application_license_id'], $_SESSION['application_device']);
             throw new RuntimeException('LICENSE_INVALID', 403);
         }
@@ -148,7 +160,7 @@ final class ApplicationAccess
             return 'viewer';
         }
         if ($user['role'] === 'manager') {
-            return (int) ($project['team_manager_id'] ?? 0) === $user['id'] ? 'editor' : 'viewer';
+            return (int) ($project['team_manager_id'] ?? 0) === $user['id'] ? 'editor' : 'none';
         }
         return 'none';
     }

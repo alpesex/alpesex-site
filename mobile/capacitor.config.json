@@ -1,0 +1,11 @@
+{
+  "appId": "fr.alpesex.cpmpasm",
+  "appName": "CPMP ASM",
+  "webDir": "www",
+  "server": { "androidScheme": "https" },
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
+  },
+  "ios": { "contentInset": "automatic" },
+  "android": { "allowMixedContent": false }
+}

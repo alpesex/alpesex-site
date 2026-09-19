@@ -1,0 +1,15 @@
+import { readFile, writeFile, mkdir, cp, rm } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { resolve, dirname } from 'node:path';
+import { build } from 'esbuild';
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const out = resolve(root, 'www');
+await rm(out, { recursive: true, force: true });
+await mkdir(out, { recursive: true });
+await cp(resolve(root, '../application'), resolve(out, 'application'), { recursive: true });
+await cp(resolve(root, '../assets'), resolve(out, 'assets'), { recursive: true });
+let html = await readFile(resolve(out, 'application/index.html'), 'utf8');
+html = html.replace('<script src="/application/mobile-bridge.js">', '<script src="/native.js"></script>\n<script src="/application/mobile-bridge.js">');
+await writeFile(resolve(out, 'index.html'), html);
+await build({ entryPoints: [resolve(root, 'src/native.js')], outfile: resolve(out, 'native.js'), bundle: true, format: 'iife', target: ['safari15', 'chrome100'] });
+console.log('Interface CPMP V5.4.18 embarquée et passerelle native compilée.');
