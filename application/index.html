@@ -400,7 +400,7 @@ async function confirmCreateProject(event){
  const list=getProjects();if(list.length>=MAX_PROJECTS)return closeNewProject();
  const name=newProjectName.value.trim();if(!name){newProjectMessage.textContent="Saisissez le nom du projet.";newProjectName.focus();return}
  newProjectConfirm.disabled=true;newProjectCancel.disabled=true;
- const p=normalizeProject(EMPTY_PROJECT);p.meta.nomProjet=name;p.meta.projectFolderName=cleanFolderName(p.meta.nomProjet);p.meta.derniereMiseAJour=new Date().toISOString().slice(0,10);list.push(p);saveProjects(list);
+ const p=normalizeProject(EMPTY_PROJECT);p.meta.portfolioId=uid();p.dcAsm.id=p.meta.portfolioId;p.meta.nomProjet=name;p.meta.projectFolderName=cleanFolderName(p.meta.nomProjet);p.meta.derniereMiseAJour=new Date().toISOString().slice(0,10);list.push(p);saveProjects(list);
  try{if(!window.erpAsmDocuments)throw new Error("Le service documentaire Cloud est indisponible.");const gateway=await window.erpAsmDocuments.state();if(!gateway.configured)throw new Error("Cloud et Gateway doivent être installés depuis ASM IT.");await window.erpAsmDocuments.ensureProject({project:{id:p.meta.portfolioId,name:p.meta.nomProjet}})}catch(e){setTimeout(()=>alert("Le projet est créé, mais son espace Cloud n’a pas pu être préparé : "+e.message),50)}
  newProjectModal.classList.remove("open");newProjectConfirm.disabled=false;newProjectCancel.disabled=false;
  showAdmin(p)
