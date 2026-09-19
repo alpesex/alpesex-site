@@ -41,13 +41,14 @@ try {
       await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
     });
     await page.goto(`http://127.0.0.1:${server.address().port}/application/`);
-    await page.locator('#authEmail').waitFor({state:'visible'});
     if (width === 390) {
       await page.locator('[data-install-app]').first().click();
       await page.locator('#installAppModal').waitFor({state:'visible'});
       assert.match(await page.locator('#installAppSteps').innerText(), /Installer l’application|Ajouter à l’écran d’accueil/);
       await page.locator('.install-cancel').click();
     }
+    await page.getByRole('button',{name:'Connexion',exact:true}).click();
+    await page.locator('#authEmail').waitFor({state:'visible'});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `Login overflow ${width}`);
     project = await page.evaluate(() => {const p=normalizeProject(EMPTY_PROJECT);p.meta.portfolioId='SMOKE';p.meta.nomProjet='Projet test mobile';return p;});
     await page.locator('#authEmail').fill('smoke@example.test');
@@ -98,7 +99,8 @@ try {
     await page.waitForFunction(() => document.getElementById('projectList').textContent.includes('Version concurrente'));
     assert.equal(await page.evaluate(() => Object.keys(window.erpAsmProjects.drafts()).length),0);
     await page.locator('#logoutButton').click();
-    await page.locator('#authEmail').waitFor({state:'visible'});
+    await page.locator('#authScreen').waitFor({state:'visible'});
+    await page.getByRole('button',{name:'Connexion',exact:true}).waitFor({state:'visible'});
     assert.equal(await page.evaluate(() => localStorage.getItem('pcasm_pro_projects')), null);
     assert.deepEqual(errors, [], `JavaScript errors at ${width}px`);
     console.log(`Login, new project, portfolio, PC view/edit, DC edit, automatic save/pull, conflict recovery, logout: OK (${width}px; mocked API)`);
