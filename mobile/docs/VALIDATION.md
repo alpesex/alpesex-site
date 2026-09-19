@@ -37,18 +37,22 @@
   de la licence sur chaque requête.
 - Service worker limité aux ressources publiques CPMP, sans effacer les caches d'autres applications.
 - Documents servis en pièce jointe pour ne pas exécuter un HTML utilisateur dans l'origine de l'application.
+- Remplacement de la boîte système `prompt()` du bouton « Nouveau projet » par un
+  formulaire intégré, compatible Windows, navigateur, téléphone et tablette. Le
+  projet reste disponible localement si le réseau tombe et sera resynchronisé.
 
 ## Résultats effectivement obtenus
 
 | Contrôle | Résultat |
 |---|---|
-| Tests Node de la passerelle (6 scénarios) | Réussis |
+| Tests Node de la passerelle et de la PWA (10 scénarios) | Réussis |
 | Compilation JS embarquée avec esbuild | Réussie |
 | Génération/synchronisation Capacitor Android et iOS | Réussie |
 | Analyse syntaxique PHP modifié et test PHP | Réussie localement ; tests PHP exécutés avec succès dans GitHub |
 | Analyse syntaxique JavaScript de l'interface | Réussie |
 | Comparaison des modèles PC ASM avec l'EXE validé | Identiques |
-| Parcours navigateur mobile/tablette | Connexion, portefeuille, PC lecture/modification, DC modification et déconnexion réussis en 390/768/1024 px avec API simulée |
+| Parcours navigateur PC/mobile/tablette | Connexion, création et synchronisation d'un nouveau projet, portefeuille, PC lecture/modification, DC modification et déconnexion testés en 390/768/1024 px avec API simulée |
+| Preview Windows | Le test Electron ouvre le formulaire « Nouveau projet », crée le projet hors ligne, vérifie sa persistance et son ouverture dans l'éditeur |
 | Compilation Gradle / Xcode | Android APK debug + AAB non signé et iOS simulateur réussis sur 9bb1263 (exécution GitHub 35441315468) |
 | Recette IONOS et appareils réels | Non réalisée |
 

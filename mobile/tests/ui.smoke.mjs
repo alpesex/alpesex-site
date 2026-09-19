@@ -54,6 +54,19 @@ try {
     await page.locator('#authForm button[type="submit"]').click();
     await page.locator('#authScreen').waitFor({state:'hidden'});
     assert.match(await page.locator('#projectList').innerText(), /Projet test mobile/);
+    await page.locator('#adminButton').click();
+    await page.locator('#addProjectButton').click();
+    await page.locator('#newProjectModal').waitFor({state:'visible'});
+    await page.locator('#newProjectName').fill(`Nouveau projet ${width}`);
+    await page.locator('#newProjectConfirm').click();
+    await page.locator('#newProjectModal').waitFor({state:'hidden'});
+    await page.frameLocator('#adminFrame').locator('body').waitFor({state:'visible'});
+    assert.equal(await page.evaluate(name => getProjects().some(item => item.meta.nomProjet === name), `Nouveau projet ${width}`), true, `Project creation ${width}`);
+    assert.equal(project.meta.nomProjet, `Nouveau projet ${width}`, `Cloud project creation ${width}`);
+    const createdId = await page.evaluate(name => getProjects().find(item => item.meta.nomProjet === name).meta.portfolioId, `Nouveau projet ${width}`);
+    await page.evaluate(id => { const items=getProjects().filter(item=>item.meta.portfolioId!==id);saveProjects(items);renderPortfolio(false); }, createdId);
+    project = await page.evaluate(() => projectById('SMOKE'));
+    revision = 1;
     await page.evaluate(() => openProject('SMOKE', false));
     await page.frameLocator('#clientFrame').locator('body').waitFor({state:'visible'});
     await page.evaluate(() => openProject('SMOKE', true));
@@ -82,7 +95,7 @@ try {
     await page.locator('#authEmail').waitFor({state:'visible'});
     assert.equal(await page.evaluate(() => localStorage.getItem('pcasm_pro_projects')), null);
     assert.deepEqual(errors, [], `JavaScript errors at ${width}px`);
-    console.log(`Login, portfolio, PC view/edit, DC edit, automatic save/pull, conflict recovery, logout: OK (${width}px; mocked API)`);
+    console.log(`Login, new project, portfolio, PC view/edit, DC edit, automatic save/pull, conflict recovery, logout: OK (${width}px; mocked API)`);
     await page.close();
   }
   const ios = await browser.newContext({userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1',viewport:{width:390,height:844}});

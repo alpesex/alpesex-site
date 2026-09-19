@@ -57,9 +57,17 @@ app.whenReady().then(async () => {
   });
   await win.loadURL(origin + '/application/');
   if (smoke) {
-    const result = await win.webContents.executeJavaScript(`({platform:window.cpmpNative.platform,bridge:typeof window.erpAsmProjects.save,queue:typeof window.CpmpSyncQueue,form:!!document.getElementById('authEmail'),node:typeof require})`);
-    if (result.platform !== 'windows' || result.bridge !== 'function' || result.queue !== 'function' || !result.form || result.node !== 'undefined') throw new Error(JSON.stringify(result));
-    console.log('Windows shared UI, bridge, isolated preload and sandbox: OK');
+    const result = await win.webContents.executeJavaScript(`(async()=>{
+      const base={platform:window.cpmpNative.platform,bridge:typeof window.erpAsmProjects.save,queue:typeof window.CpmpSyncQueue,form:!!document.getElementById('authEmail'),node:typeof require};
+      ERP_SESSION={mode:'manager',role:'manager',offline:true,email:'smoke@example.test'};renderPortfolio(true);createNewProject();
+      base.newProjectModal=document.getElementById('newProjectModal').classList.contains('open');
+      document.getElementById('newProjectName').value='Projet smoke Windows';await confirmCreateProject({preventDefault(){}});
+      base.newProjectSaved=getProjects().some(project=>project.meta.nomProjet==='Projet smoke Windows');
+      base.newProjectOpened=currentMode==='admin'&&document.getElementById('newProjectModal').classList.contains('open')===false;
+      return base;
+    })()`);
+    if (result.platform !== 'windows' || result.bridge !== 'function' || result.queue !== 'function' || !result.form || result.node !== 'undefined' || !result.newProjectModal || !result.newProjectSaved || !result.newProjectOpened) throw new Error(JSON.stringify(result));
+    console.log('Windows shared UI, new project flow, bridge, isolated preload and sandbox: OK');
     app.exit(0);
   }
 }).catch(error => {console.error(error);app.exit(1);});
