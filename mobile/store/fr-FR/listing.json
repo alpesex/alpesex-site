@@ -1,0 +1,14 @@
+{
+  "status": "draft-not-submitted",
+  "name": "CPMP ASM",
+  "appleSubtitle": "Pilotez vos projets industriels",
+  "googleShortDescription": "Projets, actions, comptes rendus et documents industriels, sur mobile et tablette.",
+  "description": "CPMP ASM réunit le pilotage de vos projets industriels et leur suivi documentaire.\n\nRetrouvez votre portefeuille de projets, consultez les indicateurs PC ASM et mettez à jour les informations de vos projets. Suivez les actions et Todo, préparez les comptes rendus et gérez le registre documentaire DC ASM depuis votre téléphone ou votre tablette.\n\nLes données sont partagées entre les appareils connectés au Cloud ALPES’Ex. Les droits de votre compte déterminent les projets que vous pouvez consulter ou modifier. Un conflit de modification est signalé pour préserver votre travail.\n\nL’application est destinée aux utilisateurs disposant d’un compte professionnel ALPES’Ex autorisé. Une connexion Internet est nécessaire pour se connecter et synchroniser les données.",
+  "keywords": "projet,industrie,pilotage,documents,actions,compte rendu,ASM",
+  "supportUrl": null,
+  "privacyPolicyUrl": null,
+  "accountDeletionUrl": null,
+  "copyright": "ALPES’Ex",
+  "releaseNotes": "Première version mobile et tablette de CPMP ASM.",
+  "reviewNotes": "À compléter après recette : compte de démonstration, droits, jeu de données et explication du modèle de licences professionnelles. Ne pas soumettre avec des identifiants fictifs."
+}
