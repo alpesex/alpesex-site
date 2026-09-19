@@ -1,0 +1,14 @@
+{
+  "name": "CPMP – ASM Mobile",
+  "short_name": "CPMP – ASM",
+  "description": "Centre de Pilotage Multi-Projets ALPES’Ex",
+  "start_url": "/application/",
+  "scope": "/application/",
+  "display": "standalone",
+  "background_color": "#11181d",
+  "theme_color": "#11181d",
+  "icons": [
+    {"src":"/assets/icon-192.png","sizes":"192x192","type":"image/png"},
+    {"src":"/assets/icon-512.png","sizes":"512x512","type":"image/png"}
+  ]
+}

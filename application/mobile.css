@@ -1,0 +1,10 @@
+html,body{overscroll-behavior:none;touch-action:manipulation}
+button,input,select,textarea{min-height:44px}
+@media(max-width:900px){
+  .shell{height:auto;min-height:100%}.shellbar{position:sticky;top:0;align-items:flex-start;padding:8px 10px}.brand small{display:none}.mark{width:34px;height:34px}.shell-actions{justify-content:flex-end;gap:6px}.shell-actions button{padding:8px 10px;font-size:.78rem}.mode-label{display:none}
+  .content{min-height:calc(100vh - 58px)}.portfolio{padding:16px 10px}.portfolio-head h1{font-size:1.45rem}.portfolio-grid{grid-template-columns:1fr}.panel{padding:14px;border-radius:16px}.finance-kpis{grid-template-columns:1fr 1fr}.project-card{grid-template-columns:1fr}.project-card>div:last-child{display:flex;gap:7px;flex-wrap:wrap}
+  iframe{position:relative;min-height:calc(100vh - 58px)}.dialog{max-height:92vh;overflow:auto;padding:18px}.auth-card{width:calc(100vw - 24px)!important;margin:12px!important;padding:22px!important}
+}
+@media(max-width:560px){
+  .brand strong{font-size:.78rem}.shell-actions button{font-size:0;padding:8px}.shell-actions button::first-letter{font-size:.8rem}.finance-kpis{grid-template-columns:1fr}.portfolio-actions{width:100%}.portfolio-actions button{flex:1}.dc-table,.portfolio-table{font-size:.72rem}
+}
