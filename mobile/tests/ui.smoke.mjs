@@ -72,9 +72,9 @@ try {
     project = await page.evaluate(() => projectById('SMOKE'));
     revision = 1;
     await page.evaluate(() => openProject('SMOKE', false));
-    await page.frameLocator('#clientFrame').locator('body').waitFor({state:'visible'});
+    await page.frameLocator('#clientFrame').locator('body').waitFor({state:'attached'});
     await page.evaluate(() => openProject('SMOKE', true));
-    await page.frameLocator('#adminFrame').locator('body').waitFor({state:'visible'});
+    await page.frameLocator('#adminFrame').locator('body').waitFor({state:'attached'});
     await page.evaluate(() => openDCProject('SMOKE', true));
     await page.locator('#dcFrame').waitFor({state:'visible'});
     await page.evaluate(() => {activeDcProject.meta.referenceProjet='AUTO-SYNC';dcPersist();});
