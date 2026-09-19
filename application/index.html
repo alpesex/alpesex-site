@@ -343,17 +343,12 @@ async function confirmRenameProject(){
  }catch(e){renameProjectMessage.textContent="Le projet n'a pas pu être renommé dans le Cloud : "+e.message;renameProjectMessage.className="message error"}
 }
 renameProjectInput.onkeydown=e=>{if(e.key==="Enter")confirmRenameProject();if(e.key==="Escape")closeRenameProject()};
-function deleteProject(id){
+async function deleteProject(id){
  const list=getProjects(),p=list.find(x=>x.meta.portfolioId===id);
  if(!p)return;
- if(!confirm(`Supprimer définitivement le projet « ${p.meta.nomProjet} » ?`))return;
+ if(!confirm(`Supprimer le projet « ${p.meta.nomProjet} » et ses documents sur tous les appareils ?`))return;
+ try{if(!projectCanEdit(p))throw new Error('Ce projet est en lecture seule.');await window.erpAsmProjects.remove(p)}catch(e){alert('Suppression interrompue : '+e.message);return}
  let next=list.filter(x=>x.meta.portfolioId!==id);
- if(!next.length){
-   const blank=normalizeProject(EMPTY_PROJECT);
-   blank.meta.nomProjet="Nouveau projet";
-   blank.meta.derniereMiseAJour=new Date().toISOString().slice(0,10);
-   next=[blank];
- }
  saveProjects(next);
  if(currentProjectId===id)currentProjectId=null;
  renderPortfolio(true);

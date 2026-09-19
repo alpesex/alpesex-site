@@ -34,12 +34,12 @@ function appUuid(): string
     return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
 }
 
-function appProject(PDO $pdo, int $organizationId, string $id): array
+function appProject(PDO $pdo, int $organizationId, string $id, bool $lock = false): array
 {
     $query = $pdo->prepare(
         'SELECT p.*,u.email AS owner_email,u.role AS owner_role,u.team_manager_id
          FROM application_projects p INNER JOIN users u ON u.id=p.owner_user_id
-         WHERE p.id=:id AND p.organization_id=:organization_id LIMIT 1'
+         WHERE p.id=:id AND p.organization_id=:organization_id AND p.deleted_at IS NULL LIMIT 1' . ($lock ? ' FOR UPDATE' : '')
     );
     $query->execute(['id' => $id, 'organization_id' => $organizationId]);
     $row = $query->fetch();
@@ -148,7 +148,7 @@ try {
         $query = $pdo->prepare(
             'SELECT p.*,u.email AS owner_email,u.role AS owner_role,u.team_manager_id
              FROM application_projects p INNER JOIN users u ON u.id=p.owner_user_id
-             WHERE p.organization_id=:organization_id ORDER BY p.updated_at DESC'
+             WHERE p.organization_id=:organization_id AND p.deleted_at IS NULL ORDER BY p.updated_at DESC'
         );
         $query->execute(['organization_id' => $user['organizationId']]);
         $projects = [];
@@ -189,6 +189,9 @@ try {
         );
         $existing->execute(['organization_id' => $user['organizationId'], 'local_id' => $localId]);
         $row = $existing->fetch();
+        if (is_array($row) && $row['deleted_at'] !== null) {
+            appFail(410, 'PROJECT_DELETED');
+        }
         $plain = json_encode($project, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
         if (!is_array($row)) {
             if ((int) ($input['revision'] ?? 0) !== 0) {
@@ -217,7 +220,7 @@ try {
             $encoded = $cipher->encrypt($plain, 'project:' . $id);
             $update = $pdo->prepare(
                 'UPDATE application_projects SET name=:name,project_data=:project_data,revision=revision+1
-                 WHERE id=:id AND revision=:revision'
+                 WHERE id=:id AND revision=:revision AND deleted_at IS NULL'
             );
             $update->execute(['name' => $name, 'project_data' => $encoded, 'id' => $id, 'revision' => $expected]);
             if ($update->rowCount() !== 1) {
@@ -227,6 +230,33 @@ try {
         }
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['id' => $id, 'revision' => $revision, 'access' => 'editor'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if ($action === 'project-delete' && $method === 'POST') {
+        $input = appJson();
+        $pdo->beginTransaction();
+        $project = appProject($pdo, $user['organizationId'], trim((string) ($input['projectId'] ?? '')), true);
+        if ($access->projectAccess($user, $project) !== 'editor') appFail(403, 'READ_ONLY');
+        $expected = filter_var($input['revision'] ?? null, FILTER_VALIDATE_INT);
+        if ($expected === false || $expected === null || $expected !== (int) $project['revision']) appFail(409, 'PROJECT_CONFLICT');
+        $documents = $pdo->prepare('SELECT storage_name FROM application_documents WHERE project_id=:id');
+        $documents->execute(['id' => $project['id']]);
+        $files = $documents->fetchAll(PDO::FETCH_COLUMN);
+        $delete = $pdo->prepare('UPDATE application_projects SET deleted_at=UTC_TIMESTAMP(),revision=revision+1,project_data=:empty WHERE id=:id AND revision=:revision AND deleted_at IS NULL');
+        $delete->execute(['id' => $project['id'], 'revision' => $expected, 'empty' => $cipher->encrypt('{}', 'project:' . $project['id'])]);
+        if ($delete->rowCount() !== 1) appFail(409, 'PROJECT_CONFLICT');
+        $deleteDocs = $pdo->prepare('DELETE FROM application_documents WHERE project_id=:id');
+        $deleteDocs->execute(['id' => $project['id']]);
+        $pdo->commit();
+        $root = getenv('ALPESEX_APPLICATION_DIR') ?: '/home/www/private/application';
+        $pending = 0;
+        foreach ($files as $file) {
+            $path = $root . '/documents/' . $user['organizationId'] . '/' . basename((string) $file);
+            if (is_file($path) && !@unlink($path)) ++$pending;
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => true, 'cleanupPending' => $pending]);
         exit;
     }
 
@@ -257,7 +287,8 @@ try {
     }
 
     if ($action === 'document-upload' && $method === 'POST') {
-        $project = appProject($pdo, $user['organizationId'], trim((string) ($_POST['projectId'] ?? '')));
+        $pdo->beginTransaction();
+        $project = appProject($pdo, $user['organizationId'], trim((string) ($_POST['projectId'] ?? '')), true);
         if ($access->projectAccess($user, $project) !== 'editor') {
             appFail(403, 'READ_ONLY');
         }
@@ -282,8 +313,10 @@ try {
         }
         $storageName = bin2hex(random_bytes(32));
         $target = $directory . '/' . $storageName;
+        $newUploadPath = $target;
         $plainDocument = file_get_contents((string) $file['tmp_name']);
         if (!is_string($plainDocument) || file_put_contents($target, $cipher->encryptBytes($plainDocument, 'document:' . $id)) === false) {
+            @unlink($target);
             appFail(503, 'STORAGE_UNAVAILABLE');
         }
         chmod($target, 0600);
@@ -301,6 +334,8 @@ try {
             'media_type' => mb_substr((string) ($file['type'] ?: 'application/octet-stream'), 0, 150),
             'byte_size' => $size, 'storage_name' => $storageName, 'user_id' => $user['id'],
         ]);
+        $pdo->commit();
+        unset($newUploadPath);
         if (is_array($old) && $old['storage_name'] !== $storageName) {
             @unlink($directory . '/' . basename((string) $old['storage_name']));
         }
@@ -332,10 +367,21 @@ try {
 
     appFail(405, 'METHOD_NOT_ALLOWED');
 } catch (JsonException) {
+    if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
+    if (isset($newUploadPath)) @unlink($newUploadPath);
     appFail(400, 'INVALID_JSON');
+} catch (PDOException $exception) {
+    if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
+    if (isset($newUploadPath)) @unlink($newUploadPath);
+    appFail(($exception->errorInfo[1] ?? 0) === 1062 ? 409 : 503,
+        ($exception->errorInfo[1] ?? 0) === 1062 ? 'PROJECT_CONFLICT' : 'APPLICATION_UNAVAILABLE');
 } catch (RuntimeException $exception) {
+    if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
+    if (isset($newUploadPath)) @unlink($newUploadPath);
     $status = $exception->getCode();
     appFail($status >= 400 && $status <= 599 ? $status : 422, $exception->getMessage());
 } catch (Throwable $exception) {
+    if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
+    if (isset($newUploadPath)) @unlink($newUploadPath);
     appFail(500, 'APPLICATION_UNAVAILABLE');
 }

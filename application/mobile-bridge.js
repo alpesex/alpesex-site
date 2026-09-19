@@ -19,6 +19,8 @@
       DEVICE_LIMIT_REACHED: 'Cette licence est déjà active sur trois appareils.',
       DEVICE_REVOKED: 'Cet appareil a été révoqué.',
       READ_ONLY: 'Ce projet est accessible en lecture seule.',
+      PROJECT_DELETED: 'Ce projet a été supprimé sur un autre appareil.',
+      PROJECT_NOT_FOUND: 'Ce projet n’est plus accessible.',
       PROJECT_CONFLICT: 'Le projet a été modifié sur un autre appareil. Rechargez les données.',
       DOCUMENT_TOO_LARGE: 'Le document dépasse la limite de 1 Mo.',
       DOCUMENT_NOT_FOUND: 'Ce document n’est pas accessible sur le Cloud.',
@@ -123,6 +125,15 @@
   window.erpAsmProjects = {
     async list() { return { projects: await projects() }; },
     acceptSnapshot(items) { items.forEach(item => saveRevision(item.localId, item.revision)); },
+    async remove(project) {
+      const localId = String(project?.meta?.portfolioId || '');
+      const item = projectCache.find(item => item.localId === localId);
+      if (!item && !project?.meta?.cloudId) return { ok: true };
+      const result = await request(API + '?action=project-delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({projectId:item?.id || project.meta.cloudId, revision:revisions()[localId]})});
+      projectCache = projectCache.filter(item => item.localId !== localId);
+      const all = revisions(); delete all[localId]; localStorage.setItem(revisionKey, JSON.stringify(all));
+      return result;
+    },
     async save(project) {
       const localId = String(project?.meta?.portfolioId || '');
       const result = await request(API + '?action=project-save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project, revision: revisions()[localId] ?? 0 }) });
@@ -170,6 +181,7 @@
     async load(id) {
       const item = (await projects()).find(project => project.id === id);
       if (!item) throw new Error('Sauvegarde introuvable.');
+      saveRevision(item.localId, item.revision);
       return { data: item.data };
     },
     async save(payload) {
