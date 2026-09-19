@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use AlpesEx\Portal\Application\ApplicationAccess;
+use AlpesEx\Portal\Application\ApplicationCipher;
 use AlpesEx\Portal\Database;
 
 header('Cache-Control: no-store');
@@ -57,6 +58,7 @@ try {
     $services = require $appDirectory . '/bootstrap.php';
     $pdo = Database::connect($services['config']);
     $access = new ApplicationAccess($pdo);
+    $cipher = new ApplicationCipher((string) ($_ENV['ALPESEX_APPLICATION_KEY'] ?? ''));
     $user = $access->sessionUser();
     $action = trim((string) ($_GET['action'] ?? 'session'));
     $method = (string) ($_SERVER['REQUEST_METHOD'] ?? 'GET');
@@ -141,7 +143,7 @@ try {
             if ($permission === 'none') {
                 continue;
             }
-            $data = json_decode((string) $row['project_data'], true);
+            $data = json_decode($cipher->decrypt((string) $row['project_data'], 'project:' . $row['id']), true);
             if (!is_array($data)) {
                 continue;
             }
@@ -173,9 +175,10 @@ try {
         );
         $existing->execute(['organization_id' => $user['organizationId'], 'local_id' => $localId]);
         $row = $existing->fetch();
-        $encoded = json_encode($project, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        $plain = json_encode($project, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
         if (!is_array($row)) {
             $id = appUuid();
+            $encoded = $cipher->encrypt($plain, 'project:' . $id);
             $insert = $pdo->prepare(
                 'INSERT INTO application_projects (id,organization_id,owner_user_id,local_id,name,project_data)
                  VALUES (:id,:organization_id,:owner_user_id,:local_id,:name,:project_data)'
@@ -191,6 +194,7 @@ try {
                 appFail(409, 'PROJECT_CONFLICT');
             }
             $id = (string) $row['id'];
+            $encoded = $cipher->encrypt($plain, 'project:' . $id);
             $update = $pdo->prepare(
                 'UPDATE application_projects SET name=:name,project_data=:project_data,revision=revision+1
                  WHERE id=:id AND revision=:revision'
@@ -244,6 +248,10 @@ try {
         if ($size < 1 || $size > 1024 * 1024) {
             appFail(413, 'DOCUMENT_TOO_LARGE');
         }
+        $existing = $pdo->prepare('SELECT id,storage_name FROM application_documents WHERE project_id=:project_id AND reference_code=:reference_code LIMIT 1');
+        $existing->execute(['project_id' => $project['id'], 'reference_code' => $ref]);
+        $old = $existing->fetch();
+        $id = is_array($old) ? (string) $old['id'] : appUuid();
         $storageRoot = getenv('ALPESEX_APPLICATION_DIR') ?: '/home/www/private/application';
         $directory = $storageRoot . '/documents/' . $user['organizationId'];
         if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) {
@@ -251,14 +259,11 @@ try {
         }
         $storageName = bin2hex(random_bytes(32));
         $target = $directory . '/' . $storageName;
-        if (!move_uploaded_file((string) $file['tmp_name'], $target)) {
+        $plainDocument = file_get_contents((string) $file['tmp_name']);
+        if (!is_string($plainDocument) || file_put_contents($target, $cipher->encryptBytes($plainDocument, 'document:' . $id)) === false) {
             appFail(503, 'STORAGE_UNAVAILABLE');
         }
         chmod($target, 0600);
-        $existing = $pdo->prepare('SELECT id,storage_name FROM application_documents WHERE project_id=:project_id AND reference_code=:reference_code LIMIT 1');
-        $existing->execute(['project_id' => $project['id'], 'reference_code' => $ref]);
-        $old = $existing->fetch();
-        $id = is_array($old) ? (string) $old['id'] : appUuid();
         $statement = $pdo->prepare(
             'INSERT INTO application_documents
              (id,organization_id,project_id,reference_code,family_code,file_name,media_type,byte_size,storage_name,uploaded_by_user_id)
@@ -294,10 +299,11 @@ try {
         if (!is_array($document) || !is_file($file)) {
             appFail(404, 'DOCUMENT_NOT_FOUND');
         }
+        $plainDocument = $cipher->decryptBytes(file_get_contents($file) ?: '', 'document:' . $document['id']);
         header('Content-Type: ' . $document['media_type']);
-        header('Content-Length: ' . filesize($file));
+        header('Content-Length: ' . strlen($plainDocument));
         header("Content-Disposition: inline; filename*=UTF-8''" . rawurlencode((string) $document['file_name']));
-        readfile($file);
+        echo $plainDocument;
         exit;
     }
 
