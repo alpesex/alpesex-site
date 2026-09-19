@@ -40,9 +40,9 @@ Le partage utilise un fichier temporaire privé, supprimé après fermeture du p
 ## État exact et limites
 
 Consulter `docs/VALIDATION.md`. Cette branche est une préparation native en
-brouillon, pas une application acceptée par Apple ou Google. Les projets natifs
-ont été générés et synchronisés ; aucune compilation iOS/Android ni recette
-sur appareil réel n'est encore déclarée réussie.
+brouillon, pas une application acceptée par Apple ou Google. Les compilations Android et iOS simulateur ont réussi dans GitHub, ainsi que
+les tests API sur MariaDB. La recette sur appareil réel reste à réaliser.
+La Preview Windows isolée est dans `../desktop`.
 
 Le raccordement Windows au même protocole doit précéder toute mise en production.
 Ne pas remplacer la V5.4.18 stable avec cette branche.

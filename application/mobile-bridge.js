@@ -32,7 +32,7 @@
     const response = await fetch(url, { credentials: 'include', ...options });
     const type = response.headers.get('content-type') || '';
     const body = type.includes('application/json') ? await response.json().catch(() => ({})) : null;
-    if (!response.ok) throw new Error(errorText(body?.error || body?.message));
+    if (!response.ok) { const error = new Error(errorText(body?.error || body?.message)); error.code = body?.error; throw error; }
     return body;
   }
 
@@ -100,6 +100,7 @@
       if (localStorage.getItem('alpesex.application.account') !== account) {
         localStorage.removeItem('pcasm_pro_projects');
         localStorage.removeItem(revisionKey);
+        localStorage.removeItem('alpesex.application.drafts');
       }
       localStorage.setItem('alpesex.application.account', account);
       projectCache = [];
@@ -116,31 +117,43 @@
       currentSession = null; projectCache = [];
       localStorage.removeItem('pcasm_pro_projects');
       localStorage.removeItem(revisionKey);
+      localStorage.removeItem('alpesex.application.drafts');
       localStorage.removeItem(licenseKey);
       localStorage.removeItem('alpesex.application.account');
       return true;
     }
   };
 
+  const queue = new window.CpmpSyncQueue(localStorage,
+    (project, revision) => request(API + '?action=project-save', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({project, revision})}),
+    (localId, project, result) => {
+      saveRevision(localId, result.revision);
+      projectCache = projectCache.filter(item => item.localId !== localId);
+      projectCache.push({id:result.id, localId, revision:result.revision, access:result.access, data:project, ownerEmail:currentSession?.email || ''});
+    });
   window.erpAsmProjects = {
+    drafts() { return queue.entries(); },
+    stage(project) { queue.stage(project, revisions()[project.meta.portfolioId] ?? 0); },
+    flush(id) { return queue.flush(id); },
+    discardDraft(id) { queue.remove(id); },
     async list() { return { projects: await projects() }; },
     acceptSnapshot(items) { items.forEach(item => saveRevision(item.localId, item.revision)); },
     async remove(project) {
       const localId = String(project?.meta?.portfolioId || '');
-      const item = projectCache.find(item => item.localId === localId);
-      if (!item && !project?.meta?.cloudId) return { ok: true };
+      let item = projectCache.find(item => item.localId === localId);
+      if (queue.running.has(localId)) await queue.flush(localId);
+      if (!item && !project?.meta?.cloudId && !projectCache.some(x=>x.localId===localId)) { queue.remove(localId); return { ok: true }; }
+      item = projectCache.find(item => item.localId === localId);
       const result = await request(API + '?action=project-delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({projectId:item?.id || project.meta.cloudId, revision:revisions()[localId]})});
+      queue.remove(localId);
       projectCache = projectCache.filter(item => item.localId !== localId);
       const all = revisions(); delete all[localId]; localStorage.setItem(revisionKey, JSON.stringify(all));
       return result;
     },
     async save(project) {
       const localId = String(project?.meta?.portfolioId || '');
-      const result = await request(API + '?action=project-save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project, revision: revisions()[localId] ?? 0 }) });
-      saveRevision(localId, result.revision);
-      projectCache = projectCache.filter(item => item.localId !== localId);
-      projectCache.push({ id: result.id, localId, revision: result.revision, access: result.access, data: project, ownerEmail: currentSession?.email || '' });
-      return result;
+      queue.stage(project, revisions()[localId] ?? 0);
+      return queue.flush(localId);
     }
   };
 

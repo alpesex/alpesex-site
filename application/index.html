@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="/application/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<script src="/application/sync-queue.js"></script>
 <script src="/application/mobile-bridge.js"></script>
 <style>
 :root{--dark:#11181d;--orange:#d66b2c;--steel:#4f7487;--bg:#f3f1ec;--white:#fff;--line:#dfe3e1;--text:#172127;--muted:#68747c;--red:#b94343;--green:#287a59;--green-bg:#e8f3ed;--red-bg:#fbeaea}
@@ -499,5 +500,6 @@ passwordModal.onclick=e=>{if(e.target===passwordModal)closePassword()};privacyMo
 getProjects();
 initializeERPASM();
 </script>
+<script src="/application/auto-sync.js"></script>
 </body>
 </html>

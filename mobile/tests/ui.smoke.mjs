@@ -21,7 +21,7 @@ try {
   for (const width of [390, 768, 1024]) {
     const page = await browser.newPage({ viewport: { width, height: 844 } });
     const errors = [];
-    let project;
+    let project, revision = 1;
     page.on('pageerror', error => errors.push(error.message));
     await page.route('**/api/**', async route => {
       const url = new URL(route.request().url());
@@ -29,7 +29,12 @@ try {
       let body = {}, status = 200;
       if (action === 'session') { status = 401; body = { error: 'AUTHENTICATION_REQUIRED' }; }
       if (action === 'activate') body = { user: {id:1,organizationId:1,email:'smoke@example.test',role:'user'}, activation:{role:'user'} };
-      if (action === 'projects') body = {projects:[{id:'cloud',localId:'SMOKE',revision:1,access:'editor',data:project}]};
+      if (action === 'projects') body = {projects:[{id:'cloud',localId:'SMOKE',revision,access:'editor',data:project}]};
+      if (action === 'project-save') {
+        const input=route.request().postDataJSON();
+        if(input.revision!==revision){status=409;body={error:'PROJECT_CONFLICT'};}
+        else {project=input.project;revision++;body={id:'cloud',revision,access:'editor'};}
+      }
       if (action === 'documents-status') body = {documents:[]};
       await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
     });
@@ -49,6 +54,13 @@ try {
     await page.frameLocator('#adminFrame').locator('body').waitFor({state:'visible'});
     await page.evaluate(() => openDCProject('SMOKE', true));
     await page.locator('#dcFrame').waitFor({state:'visible'});
+    await page.evaluate(() => {activeDcProject.meta.referenceProjet='AUTO-SYNC';dcPersist();});
+    await page.waitForFunction(() => document.getElementById('syncStatus').textContent==='Synchronisé' && Object.keys(window.erpAsmProjects.drafts()).length===0);
+    assert.equal(project.meta.referenceProjet,'AUTO-SYNC','DC changes saved automatically');
+    await page.evaluate(() => renderPortfolio(false));
+    project.meta.nomProjet='Modifié depuis un autre appareil';revision++;
+    await page.locator('#syncStatus').click();
+    await page.waitForFunction(() => document.getElementById('projectList').textContent.includes('Modifié depuis un autre appareil'));
     await page.locator('#logoutButton').click();
     await page.locator('#authEmail').waitFor({state:'visible'});
     assert.equal(await page.evaluate(() => localStorage.getItem('pcasm_pro_projects')), null);

@@ -1,7 +1,7 @@
 name: CPMP mobile validation (no deployment)
 on:
   pull_request:
-    paths: ['mobile/**', 'application/**', 'server/**', '.github/workflows/mobile-validation.yml']
+    paths: ['desktop/**', 'mobile/**', 'application/**', 'server/**', '.github/workflows/mobile-validation.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -78,3 +78,20 @@ jobs:
         with:
           name: cpmp-ios-simulator-test-only
           path: mobile/ios/App/build/Build/Products/Debug-iphonesimulator/App.app
+  windows-preview:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+        working-directory: desktop
+      - run: npm run smoke
+        working-directory: desktop
+      - run: npm run dist
+        working-directory: desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cpmp-windows-cloud-preview-test-only
+          path: desktop/dist/*.exe

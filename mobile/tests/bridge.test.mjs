@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
-const source = readFileSync(new URL('../../application/mobile-bridge.js', import.meta.url), 'utf8');
+const queueSource = readFileSync(new URL('../../application/sync-queue.js', import.meta.url), 'utf8');
+const source = queueSource + '\n' + readFileSync(new URL('../../application/mobile-bridge.js', import.meta.url), 'utf8');
 function setup(responses, initial = {}) {
   const data = new Map(Object.entries(initial));
   const calls = [];

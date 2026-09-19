@@ -58,16 +58,16 @@ Son résultat doit être contrôlé sur le commit exact avant toute promotion.
 
 ## Bloquants fonctionnels avant recette finale
 
-1. Raccorder Windows au stockage central avec migration explicite des projets
-   existants, conservation des identifiants/révisions et possibilité de retour arrière.
+1. Recetter la Preview Windows `desktop/`, qui utilise maintenant la même API.
+   La migration réelle des projets et fichiers de la V5.4.18 reste à réaliser.
 2. Recetter les sessions et cookies natifs contre un environnement IONOS de test.
-3. Ajouter la suppression de projet côté serveur : le bouton actuel supprime
-   localement et un rechargement peut faire réapparaître le projet.
-4. Terminer la synchronisation automatique : la base conserve le bouton Enregistrer
-   et charge les projets à la connexion. Le rafraîchissement en cours de session et
-   la conservation des brouillons hors ligne ne sont pas encore finalisés.
-5. Tester et sérialiser le remplacement simultané d'un même document, puis vérifier
-   que les fichiers chiffrés anciens sont supprimés sans perte du nouveau fichier.
+3. Déployer en recette les migrations 012 et 013, puis vérifier la suppression
+   multi-appareils. La suppression serveur et les tombstones sont implémentés et testés.
+4. Recetter la synchronisation automatique ajoutée : file persistante de brouillons,
+   écritures séquentielles, récupération réseau, rafraîchissement hors éditeur et
+   résolution explicite des conflits. La connexion initiale nécessite le réseau.
+5. Le remplacement simultané des documents est sérialisé par verrou SQL et testé
+   avec MariaDB. Vérifier aussi les permissions du stockage IONOS réel.
 6. Recetter PDF/impression, ouverture et annulation du sélecteur de fichiers,
    document 1 Mo, rotation, clavier, retour Android, révocation, expiration et rôles.
 7. Remplacer les icônes de gabarit natives par les ressources ALPES'Ex validées.
@@ -95,3 +95,23 @@ Aucune disponibilité App Store/Google Play, synchronisation Windows/mobile comp
 validation sur appareil réel ou acceptation des stores n'est annoncée à ce stade.
 
 Builds vérifiés : https://github.com/alpesex/alpesex-site/actions/runs/35441315468
+
+## Suite de la reprise
+
+- Exécution GitHub 35442007882 (commit d6a5b42) : trois jobs réussis, dont test
+  HTTP de la vraie API PHP sur MariaDB 11.4 temporaire et compilations Android/iOS.
+- Scénarios API : éditions concurrentes (200/409), Direction en lecture seule,
+  isolation entre organisations, remplacement concurrent de document, chiffrement
+  au repos, taille limite, suppression et absence de résurrection, activations
+  concurrentes avec plafond de trois appareils.
+- Nouvelle file de synchronisation : les révisions d'origine restent attachées
+  aux brouillons ; une panne/conflit ne les efface pas. Un changement de compte
+  nettoie les données locales. La déconnexion est bloquée tant que les brouillons
+  ne sont pas envoyés ou explicitement abandonnés via le dialogue de conflit.
+- Rafraîchissement toutes les 15 secondes en consultation/portefeuille ; sauvegarde
+  des changements toutes les 3 secondes quand l'application est visible. Un éditeur
+  ouvert n'est jamais remplacé en arrière-plan. Pas de promesse de tâches iOS en fond.
+- Preview Windows isolée ajoutée avec compilation et essai de démarrage en CI.
+  L'EXE de production n'est pas modifié ; voir `desktop/README.md` pour la reprise.
+
+Ces derniers ajouts doivent encore passer le workflow sur leur commit exact.
