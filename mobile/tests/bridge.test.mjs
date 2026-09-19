@@ -39,6 +39,13 @@ test('new account never inherits the previous local project portfolio', async ()
   assert.equal(x.data.has('pcasm_pro_projects'), false);
   assert.equal(x.data.get('alpesex.application.account'), '2:3');
 });
+test('first Windows Cloud activation queues the legacy V5.4.18 portfolio', async () => {
+  const project = {meta:{portfolioId:'legacy-project',nomProjet:'Projet Windows existant'}};
+  const x = setup([{body:{}},{body:{user:{organizationId:2,id:3,email:'owner@example.test',role:'user'},activation:{role:'user'}}}], {'pcasm_pro_projects':JSON.stringify([project])});
+  await x.window.erpAsmAuth.login({email:'owner@example.test',password:'unused',licenseToken:'token'});
+  assert.equal(x.window.erpAsmProjects.drafts()['legacy-project'].project.meta.nomProjet, 'Projet Windows existant');
+  assert.equal(x.data.get('alpesex.application.account'), '2:3');
+});
 test('backup adapter does not publish a project a second time', async () => {
   const x = setup([]);
   await x.window.erpAsmBackups.save({data:{meta:{portfolioId:'p'}}});
