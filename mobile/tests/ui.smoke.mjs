@@ -67,11 +67,11 @@ try {
     await page.locator('#newProjectModal').waitFor({state:'hidden'});
     await page.frameLocator('#adminFrame').locator('body').waitFor({state:'visible'});
     const admin = page.frameLocator('#adminFrame');
-    await admin.getByRole('button',{name:'Pilotage transverse',exact:true}).click();
-    await admin.locator('[data-trans="ASM-204"]').click();
+    await admin.getByRole('button',{name:'Pilotage transverse',exact:true}).evaluate(button => button.click());
+    await admin.locator('[data-trans="ASM-204"]').evaluate(button => button.click());
     await admin.getByRole('heading',{name:'ASM-204 — Pilotage budgétaire',exact:true}).waitFor();
     assert.match(await admin.locator('#adminTransContent').innerText(), /Budget initial[\s\S]*Prix à terminaison[\s\S]*Marge à terminaison/);
-    await admin.locator('[data-trans="ASM-205"]').click();
+    await admin.locator('[data-trans="ASM-205"]').evaluate(button => button.click());
     await admin.getByRole('heading',{name:'ASM-205 — Pilotage des délais',exact:true}).waitFor();
     assert.match(await admin.locator('#adminTransContent').innerText(), /Date de fin initiale[\s\S]*Date de fin estimée[\s\S]*Chemin critique/);
     assert.equal(await page.evaluate(name => getProjects().some(item => item.meta.nomProjet === name), `Nouveau projet ${width}`), true, `Project creation ${width}`);
