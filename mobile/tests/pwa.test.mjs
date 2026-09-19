@@ -20,9 +20,9 @@ test('web application is installable from the canonical application URL', () => 
 
 test('web installation requires a customer session and a mobile or tablet user agent', () => {
   assert.match(gate, /ALPESEXSESSID/);
-  assert.match(gate, /Android\\|iPhone\\|iPad/);
+  assert.match(gate, /Android\|iPhone\|iPad/);
   assert.match(gate, /Application Windows requise/);
-  assert.match(accessRules, /RewriteRule \\^index\\\\\\.html\\$ index\\.php/);
+  assert.match(accessRules, /RewriteRule \^index\\\.html\$ index\.php/);
 });
 
 test('offline shell never caches accounts, APIs, projects or documents', () => {
