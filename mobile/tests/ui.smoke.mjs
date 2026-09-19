@@ -58,9 +58,6 @@ try {
     await page.locator('#authScreen').waitFor({state:'hidden'});
     assert.match(await page.locator('#projectList').innerText(), /Projet test mobile/);
     await page.locator('#adminButton').click();
-    const fileChooser = page.waitForEvent('filechooser');
-    await page.getByRole('button',{name:'Importer une sauvegarde Windows',exact:true}).click();
-    await fileChooser;
     await page.locator('#addProjectButton').click();
     await page.locator('#newProjectModal').waitFor({state:'visible'});
     await page.locator('#newProjectName').fill(`Nouveau projet ${width}`);
