@@ -33,7 +33,9 @@ app.whenReady().then(async () => {
   });
   win = new BrowserWindow({width:1360,height:900,show:!smoke,title:'CPMP ASM — Cloud Preview',
     webPreferences:{session:ses,preload:path.join(__dirname,'preload.cjs'),sandbox:true,contextIsolation:true,nodeIntegration:false}});
-  win.webContents.setWindowOpenHandler(() => ({action:'deny'}));
+  win.webContents.setWindowOpenHandler(({url}) => url === 'about:blank'
+    ? {action:'allow', overrideBrowserWindowOptions:{webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false,preload:''}}}
+    : {action:'deny'});
   win.webContents.on('will-navigate', (event, url) => {if (url !== origin + '/application/') event.preventDefault();});
   win.webContents.on('will-attach-webview', event => event.preventDefault());
   ipcMain.handle('cpmp:account', async event => {allowedSender(event);await shell.openExternal(origin + '/compte/');});

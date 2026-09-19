@@ -26,6 +26,7 @@
   saveProjects = function (list) { stage(list); originalSave(list); };
   syncProjectsFromCloud = async function (snapshot) {
     const result = snapshot || await window.erpAsmProjects.list();
+    if (ready && ['admin','dc-admin'].includes(currentMode)) return false;
     const drafts = window.erpAsmProjects.drafts(), merged = new Map(), accepted = [];
     for (const item of result.projects || []) {
       if (!item.data?.meta) continue;
@@ -40,6 +41,7 @@
     finally { applying = false; }
     ready = true; lastPull = Date.now();
     message(Object.keys(drafts).length ? 'Modifications en attente' : 'Synchronisé');
+    return true;
   };
   function capture() {
     if (!ready || !ERP_SESSION) return;
@@ -66,7 +68,7 @@
       // Never replace an open editor, including controls that have not lost focus yet.
       if (!['admin','dc-admin'].includes(currentMode) && (force || Date.now() - lastPull > 15000)) {
         const mode = currentMode, id = currentProjectId, before = id && projectById(id);
-        await syncProjectsFromCloud();
+        if (!await syncProjectsFromCloud()) return;
         const after = id && projectById(id);
         if (mode === 'portfolio' || !after) renderPortfolio(portfolioAdmin);
         else if (JSON.stringify(before) !== JSON.stringify(after)) {

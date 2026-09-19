@@ -61,11 +61,22 @@ try {
     project.meta.nomProjet='Modifié depuis un autre appareil';revision++;
     await page.locator('#syncStatus').click();
     await page.waitForFunction(() => document.getElementById('projectList').textContent.includes('Modifié depuis un autre appareil'));
+    await page.evaluate(() => openDCProject('SMOKE', true));
+    project.meta.nomProjet='Version concurrente';revision++;
+    await page.evaluate(() => {activeDcProject.meta.referenceProjet='LOCAL-CONFLICT';dcPersist();});
+    await page.waitForFunction(() => document.getElementById('syncStatus').textContent.includes('Conflit'));
+    assert.equal(await page.evaluate(() => window.erpAsmProjects.drafts().SMOKE.project.meta.referenceProjet),'LOCAL-CONFLICT');
+    await page.locator('#syncStatus').click();
+    await page.getByRole('button',{name:'Reprendre la version Cloud',exact:true}).waitFor();
+    page.once('dialog',dialog=>dialog.accept());
+    await page.getByRole('button',{name:'Reprendre la version Cloud',exact:true}).click();
+    await page.waitForFunction(() => document.getElementById('projectList').textContent.includes('Version concurrente'));
+    assert.equal(await page.evaluate(() => Object.keys(window.erpAsmProjects.drafts()).length),0);
     await page.locator('#logoutButton').click();
     await page.locator('#authEmail').waitFor({state:'visible'});
     assert.equal(await page.evaluate(() => localStorage.getItem('pcasm_pro_projects')), null);
     assert.deepEqual(errors, [], `JavaScript errors at ${width}px`);
-    console.log(`Login, portfolio, PC view/edit, DC edit, logout: OK (${width}px; mocked API)`);
+    console.log(`Login, portfolio, PC view/edit, DC edit, automatic save/pull, conflict recovery, logout: OK (${width}px; mocked API)`);
     await page.close();
   }
 } finally { await browser.close(); server.close(); }

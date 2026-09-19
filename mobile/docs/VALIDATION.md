@@ -114,4 +114,13 @@ Builds vérifiés : https://github.com/alpesex/alpesex-site/actions/runs/3544131
 - Preview Windows isolée ajoutée avec compilation et essai de démarrage en CI.
   L'EXE de production n'est pas modifié ; voir `desktop/README.md` pour la reprise.
 
-Ces derniers ajouts doivent encore passer le workflow sur leur commit exact.
+Le commit a57cd5c a passé les tests navigateur/API et les compilations iOS et
+Windows (y compris démarrage Electron et production de l'EXE portable).
+Exécution : https://github.com/alpesex/alpesex-site/actions/runs/35442547777
+
+Correction complémentaire : un chargement Cloud lancé au portefeuille ne peut
+plus remplacer un éditeur ouvert pendant la requête. Le test navigateur couvre
+maintenant sauvegarde automatique, récupération d'une modification distante,
+conservation d'un conflit puis abandon explicite de la copie locale en faveur
+du Cloud (390/768/1024 px). Le dossier `mobile/store/` contient la fiche française
+et les étapes de publication, sans prétendre à une soumission effective.
