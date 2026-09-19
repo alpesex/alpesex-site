@@ -49,10 +49,10 @@
 | Analyse syntaxique JavaScript de l'interface | Réussie |
 | Comparaison des modèles PC ASM avec l'EXE validé | Identiques |
 | Parcours navigateur mobile/tablette | Connexion, portefeuille, PC lecture/modification, DC modification et déconnexion réussis en 390/768/1024 px avec API simulée |
-| Compilation Gradle / Xcode | iOS simulateur réussi sur 386825a ; premier Android bloqué par le paquet SDK tools supprimé, configuration corrigée pour la relance |
+| Compilation Gradle / Xcode | Android APK debug + AAB non signé et iOS simulateur réussis sur 9bb1263 (exécution GitHub 35441315468) |
 | Recette IONOS et appareils réels | Non réalisée |
 
-Le workflow `mobile-validation.yml` ne déploie rien. Il prévoit tests Node/PHP,
+Le workflow `mobile-validation.yml` ne déploie rien. Il exécute tests Node/PHP et navigateur,
 APK de debug + AAB non signé et application pour simulateur iOS non signée.
 Son résultat doit être contrôlé sur le commit exact avant toute promotion.
 
@@ -93,3 +93,5 @@ Références officielles consultées :
 
 Aucune disponibilité App Store/Google Play, synchronisation Windows/mobile complète,
 validation sur appareil réel ou acceptation des stores n'est annoncée à ce stade.
+
+Builds vérifiés : https://github.com/alpesex/alpesex-site/actions/runs/35441315468

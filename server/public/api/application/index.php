@@ -81,7 +81,7 @@ try {
         if (!isset($_SESSION['application_license_id'], $_SESSION['application_device'])) {
             appFail(401, 'LICENSE_ACTIVATION_REQUIRED');
         }
-        $access->assertActiveDevice($user);
+        $user['role'] = $access->assertActiveDevice($user);
     }
 
     if ($action === 'verify-password' && $method === 'POST') {

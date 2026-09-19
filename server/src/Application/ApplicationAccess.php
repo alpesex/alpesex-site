@@ -108,7 +108,7 @@ final class ApplicationAccess
     }
 
     /** @param array{id:int,organizationId:int} $user */
-    public function assertActiveDevice(array $user): void
+    public function assertActiveDevice(array $user): string
     {
         $licenseId = filter_var($_SESSION['application_license_id'] ?? null, FILTER_VALIDATE_INT);
         $deviceIdentifier = strtolower((string) ($_SESSION['application_device'] ?? ''));
@@ -116,7 +116,7 @@ final class ApplicationAccess
             throw new RuntimeException('LICENSE_ACTIVATION_REQUIRED', 401);
         }
         $query = $this->pdo->prepare(
-            "SELECT d.id,r.status,r.expires_at,r.assigned_user_id,r.assigned_email,o.status AS organization_status,
+            "SELECT d.id,r.status,r.expires_at,r.license_role,r.assigned_user_id,r.assigned_email,o.status AS organization_status,
                     parent.status AS parent_status,parent.expires_at AS parent_expires_at
              FROM application_devices d
              INNER JOIN organization_license_registry r ON r.id=d.license_registry_id
@@ -143,8 +143,13 @@ final class ApplicationAccess
             unset($_SESSION['application_license_id'], $_SESSION['application_device']);
             throw new RuntimeException('LICENSE_INVALID', 403);
         }
+        $role = (string) ($row['license_role'] ?? '');
+        if (!in_array($role, ['user', 'manager', 'direction'], true)) {
+            throw new RuntimeException('LICENSE_INVALID', 403);
+        }
         $touch = $this->pdo->prepare('UPDATE application_devices SET last_seen_at=UTC_TIMESTAMP() WHERE id=:id');
         $touch->execute(['id' => $row['id']]);
+        return $user['role'] === 'direction' ? 'direction' : $role;
     }
 
     /** @param array{id:int,organizationId:int,role:string} $user */
