@@ -68,8 +68,7 @@ try {
     await page.frameLocator('#adminFrame').locator('body').waitFor({state:'visible'});
     assert.equal(await page.evaluate(name => getProjects().some(item => item.meta.nomProjet === name), `Nouveau projet ${width}`), true, `Project creation ${width}`);
     assert.equal(createdProject.meta.nomProjet, `Nouveau projet ${width}`, `Cloud project creation ${width}`);
-    const createdId = await page.evaluate(name => getProjects().find(item => item.meta.nomProjet === name).meta.portfolioId, `Nouveau projet ${width}`);
-    await page.evaluate(id => { const items=getProjects().filter(item=>item.meta.portfolioId!==id);saveProjects(items);renderPortfolio(false); }, createdId);
+    await page.evaluate(() => renderPortfolio(false));
     project = await page.evaluate(() => projectById('SMOKE'));
     revision = 1;
     await page.evaluate(() => openProject('SMOKE', false));
