@@ -1,4 +1,4 @@
-const CACHE = 'cpmp-asm-web-5.4.18-4';
+const CACHE = 'cpmp-asm-web-5.4.18-5';
 const SHELL = ['/application/', '/application/index.html', '/application/mobile-bridge.js', '/application/sync-queue.js', '/application/auto-sync.js', '/application/install.js', '/application/mobile.css', '/application/manifest.webmanifest', '/assets/apple-touch-icon.png', '/assets/icon-192.png', '/assets/icon-512.png'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('cpmp-asm-mobile-') && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())));

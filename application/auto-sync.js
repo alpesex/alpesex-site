@@ -23,7 +23,10 @@
     }
   }
   const originalSave = saveProjects;
-  saveProjects = function (list) { stage(list); originalSave(list); };
+  saveProjects = function (list) {
+    stage(list); originalSave(list);
+    if (ready && ERP_SESSION) void tick(true);
+  };
   syncProjectsFromCloud = async function (snapshot) {
     const result = snapshot || await window.erpAsmProjects.list();
     if (ready && ['admin','dc-admin'].includes(currentMode)) return false;
@@ -143,5 +146,5 @@
     capture();
     if (ready && Object.keys(window.erpAsmProjects.drafts()).length) { event.preventDefault(); event.returnValue = ''; }
   });
-  setInterval(() => { if (!document.hidden) tick(); }, 3000);
+  setInterval(() => { if (!document.hidden) tick(true); }, 2000);
 })();

@@ -97,12 +97,21 @@
       localStorage.setItem(licenseKey, token);
       currentSession = activated.user;
       const account = `${currentSession.organizationId}:${currentSession.id}`;
-      if (localStorage.getItem('alpesex.application.account') !== account) {
+      const previousAccount = localStorage.getItem('alpesex.application.account');
+      let legacyProjects = [];
+      if (previousAccount === null) {
+        try { legacyProjects = JSON.parse(localStorage.getItem('pcasm_pro_projects') || '[]'); }
+        catch (_) { legacyProjects = []; }
+      }
+      if (previousAccount !== null && previousAccount !== account) {
         localStorage.removeItem('pcasm_pro_projects');
         localStorage.removeItem(revisionKey);
         localStorage.removeItem('alpesex.application.drafts');
       }
       localStorage.setItem('alpesex.application.account', account);
+      for (const project of Array.isArray(legacyProjects) ? legacyProjects : []) {
+        if (project?.meta?.portfolioId) queue.stage(project, 0);
+      }
       projectCache = [];
       const effectiveRole = activated.activation.role || activated.user.role;
       return { company: 'Organisation ASM', manager: activated.user.email, email: activated.user.email, role: effectiveRole, mode: effectiveRole === 'direction' ? 'viewer' : 'manager', offline: false, mustChangePassword: false };

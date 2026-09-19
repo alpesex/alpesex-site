@@ -78,7 +78,7 @@ jobs:
         with:
           name: cpmp-ios-simulator-test-only
           path: mobile/ios/App/build/Build/Products/Debug-iphonesimulator/App.app
-  windows-preview:
+  windows-installer:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -93,5 +93,5 @@ jobs:
         working-directory: desktop
       - uses: actions/upload-artifact@v4
         with:
-          name: cpmp-windows-cloud-preview-test-only
+          name: cpmp-windows-v5.4.18.1-test-only
           path: desktop/dist/*.exe

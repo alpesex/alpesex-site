@@ -3,16 +3,27 @@ const path = require('node:path');
 const fs = require('node:fs/promises');
 const origin = 'https://alpes-ex.fr';
 const smoke = process.argv.includes('--smoke-test');
-// The validated Windows installation, licence files and local database are untouched.
-app.setPath('userData', path.join(app.getPath('appData'), 'cpmp-asm-cloud-preview'));
-let win;
+// Keep the validated V5.4.18 profile so its existing portfolio can be migrated.
+app.setPath('userData', path.join(app.getPath('appData'), 'cpmp-asm'));
+let win, legacyProjectsJson = null;
+async function readLegacyProjects(ses) {
+  if (smoke) return null;
+  const reader = new BrowserWindow({show:false,webPreferences:{session:ses,sandbox:true,contextIsolation:true,nodeIntegration:false}});
+  try {
+    await reader.loadFile(path.join(__dirname, 'legacy-reader.html'));
+    const value = await reader.webContents.executeJavaScript("localStorage.getItem('pcasm_pro_projects')");
+    return typeof value === 'string' && value !== '[]' ? value : null;
+  } catch { return null; }
+  finally { reader.destroy(); }
+}
 function allowedSender(event) {
   if (event.sender !== win.webContents || event.senderFrame !== win.webContents.mainFrame ||
       event.senderFrame.url !== origin + '/application/') throw new Error('Accès refusé');
 }
 function filename(value) { return path.basename(String(value || 'document')).replace(/[<>:"/\\|?*\x00-\x1f]/g, '_'); }
 app.whenReady().then(async () => {
-  const ses = session.fromPartition(smoke ? 'smoke-test' : 'persist:cloud-preview');
+  const ses = smoke ? session.fromPartition('smoke-test') : session.defaultSession;
+  legacyProjectsJson = await readLegacyProjects(ses);
   ses.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   ses.protocol.handle('https', async request => {
     const url = new URL(request.url);
@@ -31,7 +42,8 @@ app.whenReady().then(async () => {
       return new Response(await fs.readFile(file), {headers:{'Content-Type':type,'Cache-Control':'no-store'}});
     } catch { return new Response('Not found', {status:404}); }
   });
-  win = new BrowserWindow({width:1360,height:900,show:!smoke,title:'CPMP ASM — Cloud Preview',
+  ipcMain.on('cpmp:legacy-projects', event => { event.returnValue = legacyProjectsJson; legacyProjectsJson = null; });
+  win = new BrowserWindow({width:1360,height:900,show:!smoke,title:'CPMP ASM',icon:path.join(__dirname,'www','assets','favicon.ico'),
     webPreferences:{session:ses,preload:path.join(__dirname,'preload.cjs'),sandbox:true,contextIsolation:true,nodeIntegration:false}});
   win.webContents.setWindowOpenHandler(({url}) => url === 'about:blank'
     ? {action:'allow', overrideBrowserWindowOptions:{webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false,preload:''}}}
