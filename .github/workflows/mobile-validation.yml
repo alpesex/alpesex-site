@@ -93,5 +93,5 @@ jobs:
         working-directory: desktop
       - uses: actions/upload-artifact@v4
         with:
-          name: cpmp-windows-v5.4.18.1-test-only
+          name: cpmp-windows-v6.0.0
           path: desktop/dist/*.exe

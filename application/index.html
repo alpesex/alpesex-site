@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CPMP – ASM V5.4.18 · ALPES'EX</title>
+<title>CPMP – ASM V6.0.0 · ALPES'EX</title>
 <meta name="theme-color" content="#11181d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -156,9 +156,9 @@ async function submitAuth(event){
  }catch(e){authError.textContent=e.message||'Opération impossible.'}
 }
 function updateSessionUI(){const viewer=ERP_SESSION?.mode==='viewer';adminButton.textContent=viewer?'Consultation':'Modifier';modeLabel.title=ERP_SESSION?(ERP_SESSION.email+' · Licence '+ERP_SESSION.role+(ERP_SESSION.offline?' · Hors ligne':'')):''}
-async function initializeERPASM(){getProjects();if(!window.erpAsmAuth){authError.textContent='Cette version nécessite CPMP – ASM V5.4.18.';showAuthForm('login');return}try{const state=await window.erpAsmAuth.state();AUTH_NEEDS_LICENSE=Boolean(state.needsLicense);AUTH_REMEMBERED_PASSWORD=state.password||'';authEmail.value=state.email||state.licenseEmail||'';authLicense.value=state.licenseToken||'';authRemember.checked=Boolean(state.rememberMe);if(AUTH_NEEDS_LICENSE){showAuthForm('login');authFormTitle.textContent='Activation et connexion';authError.textContent='Ressaisissez votre licence utilisateur pour la vérifier en ligne.'}else{showAuthWelcome();if(!state.online)authError.textContent='Cloud indisponible : la connexion utilisera l’autorisation hors ligne existante.'}}catch(e){showAuthForm('login');authError.textContent=e.message}}
+async function initializeERPASM(){getProjects();if(!window.erpAsmAuth){authError.textContent='Cette version nécessite CPMP – ASM V6.0.0.';showAuthForm('login');return}try{const state=await window.erpAsmAuth.state();AUTH_NEEDS_LICENSE=Boolean(state.needsLicense);AUTH_REMEMBERED_PASSWORD=state.password||'';authEmail.value=state.email||state.licenseEmail||'';authLicense.value=state.licenseToken||'';authRemember.checked=Boolean(state.rememberMe);if(AUTH_NEEDS_LICENSE){showAuthForm('login');authFormTitle.textContent='Activation et connexion';authError.textContent='Ressaisissez votre licence utilisateur pour la vérifier en ligne.'}else{showAuthWelcome();if(!state.online)authError.textContent='Cloud indisponible : la connexion utilisera l’autorisation hors ligne existante.'}}catch(e){showAuthForm('login');authError.textContent=e.message}}
 
-async function openBackupBrowser(){if(!window.erpAsmBackups)return alert('Cette fonction nécessite CPMP – ASM V5.4.18.');backupModal.classList.add('open');backupMessage.textContent='Recherche des sauvegardes dans le Cloud ALPES’Ex…';backupRows.innerHTML='';try{const result=await window.erpAsmBackups.list();backupMessage.textContent=result.backups.length?result.backups.length+' sauvegarde(s) Cloud liée(s) à cette licence.':'Aucune sauvegarde disponible pour cette licence.';backupRows.innerHTML=result.backups.map(x=>'<div class="backup-row"><div><strong>'+escapeHtml(x.name)+'</strong><small>'+escapeHtml(x.manager)+' · '+escapeHtml(x.category)+(x.project?' · '+escapeHtml(x.project):'')+' · '+(x.modifiedAt?new Date(x.modifiedAt).toLocaleString('fr-FR'):'Date inconnue')+'</small></div><button class="primary" data-id="'+x.id+'" onclick="loadBackupFromMotherFolder(this.dataset.id)">Charger</button></div>').join('')||'<div class="empty">Aucune sauvegarde trouvée.</div>'}catch(e){backupMessage.textContent='Lecture impossible : '+e.message}}
+async function openBackupBrowser(){if(!window.erpAsmBackups)return alert('Cette fonction nécessite CPMP – ASM V6.0.0.');backupModal.classList.add('open');backupMessage.textContent='Recherche des sauvegardes dans le Cloud ALPES’Ex…';backupRows.innerHTML='';try{const result=await window.erpAsmBackups.list();backupMessage.textContent=result.backups.length?result.backups.length+' sauvegarde(s) Cloud liée(s) à cette licence.':'Aucune sauvegarde disponible pour cette licence.';backupRows.innerHTML=result.backups.map(x=>'<div class="backup-row"><div><strong>'+escapeHtml(x.name)+'</strong><small>'+escapeHtml(x.manager)+' · '+escapeHtml(x.category)+(x.project?' · '+escapeHtml(x.project):'')+' · '+(x.modifiedAt?new Date(x.modifiedAt).toLocaleString('fr-FR'):'Date inconnue')+'</small></div><button class="primary" data-id="'+x.id+'" onclick="loadBackupFromMotherFolder(this.dataset.id)">Charger</button></div>').join('')||'<div class="empty">Aucune sauvegarde trouvée.</div>'}catch(e){backupMessage.textContent='Lecture impossible : '+e.message}}
 function closeBackupBrowser(){backupModal.classList.remove('open')}
 async function loadBackupFromMotherFolder(id){backupMessage.textContent='Chargement en cours…';try{const result=await window.erpAsmBackups.load(id),payload=result.data,adminMode=portfolioAdmin;if(Array.isArray(payload)||payload?.type==='PC_ASM_MULTI_PROJECTS'||payload?.type==='ERP_ASM_PORTFOLIO'||Array.isArray(payload?.projects)){let incoming=Array.isArray(payload)?payload:payload.projects;if(!incoming.length)throw new Error('Cette sauvegarde ne contient aucun projet.');saveProjects(incoming.map(normalizeProject).slice(0,MAX_PROJECTS))}else{const p=normalizeProject(payload),list=getProjects(),i=list.findIndex(x=>x.meta.portfolioId===p.meta.portfolioId);if(i>=0)list[i]=p;else{if(list.length>=MAX_PROJECTS)throw new Error('Limite de 10 projets atteinte.');list.push(p)}saveProjects(list)}closeBackupBrowser();renderPortfolio(adminMode);alert('Données chargées depuis le Cloud ALPES’Ex.')}catch(e){backupMessage.textContent='Chargement impossible : '+e.message}}
 async function saveMotherBackup(type,data,projectName=''){if(!window.erpAsmBackups||ERP_SESSION?.mode!=='manager')return null;return window.erpAsmBackups.save({type,data,projectName})}
@@ -223,7 +223,7 @@ function normalizeProject(p){
  if(!Array.isArray(p.dcAsmLinks))p.dcAsmLinks=[];
  if(!p.dcAsm||!Array.isArray(p.dcAsm.documents))p.dcAsm=createDCProject(p);
  p.dcAsm.id=p.meta.portfolioId;p.dcAsm.name=p.meta.nomProjet;p.dcAsm.reference=p.meta.referenceProjet||"";
- p.meta.version="CPMP - ASM V5.4.18";
+ p.meta.version="CPMP - ASM V6.0.0";
  return repairCrElements(p)
 }
 function createDCProject(p){
@@ -431,7 +431,7 @@ async function publishAllProjects(){
  if(!projects.length)return alert("Aucun projet à enregistrer.");
  const portfolioFile={
    type:"ERP_ASM_PORTFOLIO",
-   version:"CPMP - ASM V5.4.18",
+   version:"CPMP - ASM V6.0.0",
    exportedAt:new Date().toISOString(),
    projects:projects
  };

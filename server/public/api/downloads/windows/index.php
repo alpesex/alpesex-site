@@ -37,7 +37,7 @@ try {
         throw new RuntimeException('LICENSE_REQUIRED', 403);
     }
 
-    $file = getenv('ALPESEX_WINDOWS_INSTALLER') ?: '/home/www/private/downloads/CPMP-ASM-Setup-V5.4.18.1-x64.exe';
+    $file = getenv('ALPESEX_WINDOWS_INSTALLER') ?: '/home/www/private/downloads/CPMP-ASM-Setup-V6.0.0-x64.exe';
     if (!is_file($file) || !is_readable($file)) {
         throw new RuntimeException('INSTALLER_UNAVAILABLE', 404);
     }
@@ -48,7 +48,7 @@ try {
     }
     session_write_close();
     header('Content-Type: application/vnd.microsoft.portable-executable');
-    header('Content-Disposition: attachment; filename="CPMP-ASM-Setup-V5.4.18.1-x64.exe"');
+    header('Content-Disposition: attachment; filename="CPMP-ASM-Setup-V6.0.0-x64.exe"');
     header('Content-Length: ' . $size);
     header('Cache-Control: private, no-store, max-age=0');
     header('X-Content-Type-Options: nosniff');
