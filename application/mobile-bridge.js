@@ -13,7 +13,10 @@
   let currentSession = null;
   let projectCache = [];
 
-  function errorText(code) {
+  function errorText(code, body = {}) {
+    if (code === 'DEVICE_ALREADY_CONNECTED') {
+      return 'Un autre appareil est déjà connecté : ' + (body.deviceName || 'appareil inconnu');
+    }
     return ({
       AUTHENTICATION_REQUIRED: 'Connectez-vous avec votre compte ALPES’Ex.',
       LICENSE_ACTIVATION_REQUIRED: 'Saisissez votre licence utilisateur pour activer cet appareil.',
@@ -35,7 +38,7 @@
     const response = await fetch(url, { credentials: 'include', ...options });
     const type = response.headers.get('content-type') || '';
     const body = type.includes('application/json') ? await response.json().catch(() => ({})) : null;
-    if (!response.ok) { const error = new Error(errorText(body?.error || body?.message)); error.code = body?.error; throw error; }
+    if (!response.ok) { const error = new Error(errorText(body?.error || body?.message, body)); error.code = body?.error; throw error; }
     return body;
   }
 
@@ -135,6 +138,7 @@
     verifyPassword(password) { return request(API + '?action=verify-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) }); },
     async session() { return currentSession; },
     async logout() {
+      await request(API + '?action=device-disconnect', { method: 'POST' }).catch(() => null);
       await request(AUTH + 'logout/', { method: 'POST' }).catch(() => null);
       currentSession = null; projectCache = [];
       localStorage.removeItem('pcasm_pro_projects');
@@ -151,7 +155,7 @@
     (localId, project, result) => {
       saveRevision(localId, result.revision);
       projectCache = projectCache.filter(item => item.localId !== localId);
-      projectCache.push({id:result.id, localId, revision:result.revision, access:result.access, data:project, ownerEmail:currentSession?.email || ''});
+      projectCache.push({id:result.id, localId:result.localId || localId, revision:result.revision, access:result.access, data:project, ownerEmail:currentSession?.email || ''});
     });
   window.erpAsmProjects = {
     drafts() { return queue.entries(); },
