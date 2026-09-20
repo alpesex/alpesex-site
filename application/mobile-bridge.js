@@ -46,13 +46,22 @@
     } catch (_) { return {}; }
   }
 
-  function deviceIdentifier() {
-    let value = localStorage.getItem(deviceKey);
-    if (/^[a-f0-9]{64}$/.test(value || '')) return value;
+  async function deviceIdentity() {
+    const previous = localStorage.getItem(deviceKey);
+    if (typeof window.cpmpNative?.deviceIdentity === 'function') {
+      try {
+        const native = await window.cpmpNative.deviceIdentity();
+        if (/^[a-f0-9]{64}$/.test(native?.identifier || '')) {
+          localStorage.setItem(deviceKey, native.identifier);
+          return {identifier:native.identifier, previous:/^[a-f0-9]{64}$/.test(previous || '') && previous !== native.identifier ? previous : null, name:native.name || 'PC Windows'};
+        }
+      } catch (_) {}
+    }
+    if (/^[a-f0-9]{64}$/.test(previous || '')) return {identifier:previous, previous:null, name:`${navigator.platform || 'Mobile'} - CPMP ASM`};
     const bytes = crypto.getRandomValues(new Uint8Array(32));
-    value = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+    const value = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
     localStorage.setItem(deviceKey, value);
-    return value;
+    return {identifier:value, previous:null, name:`${navigator.platform || 'Mobile'} - CPMP ASM`};
   }
 
   function revisions() {
@@ -96,7 +105,8 @@
       const token = String(payload.licenseToken || localStorage.getItem(licenseKey) || '').trim();
       const role = String(claims(token).role || 'user').toLowerCase();
       await request(AUTH + 'login/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: payload.email, password: payload.password, profileType: role === 'manager' ? 'manager' : 'user', remember: Boolean(payload.rememberMe) }) });
-      const activated = await request(API + '?action=activate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ licenseToken: token, deviceIdentifier: deviceIdentifier(), deviceName: `${navigator.platform || 'Mobile'} - CPMP ASM`, platform: window.cpmpNative?.platform || 'web' }) });
+      const device = await deviceIdentity();
+      const activated = await request(API + '?action=activate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ licenseToken: token, deviceIdentifier: device.identifier, previousDeviceIdentifier: device.previous, deviceName: device.name, platform: window.cpmpNative?.platform || 'web' }) });
       localStorage.setItem(licenseKey, token);
       currentSession = activated.user;
       const account = `${currentSession.organizationId}:${currentSession.id}`;

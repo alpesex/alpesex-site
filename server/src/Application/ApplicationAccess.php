@@ -41,7 +41,7 @@ final class ApplicationAccess
     }
 
     /** @param array{id:int,organizationId:int,email:string,role:string} $user */
-    public function activateDevice(array $user, string $licenseToken, string $deviceIdentifier, string $deviceName, string $platform = 'web'): array
+    public function activateDevice(array $user, string $licenseToken, string $deviceIdentifier, string $deviceName, string $platform = 'web', string $previousDeviceIdentifier = ''): array
     {
         if (!preg_match('/^[a-f0-9]{64}$/', $deviceIdentifier)) {
             throw new RuntimeException('DEVICE_INVALID', 422);
@@ -74,6 +74,20 @@ final class ApplicationAccess
             );
             $existing->execute(['license_id' => $row['id'], 'device_identifier' => $deviceIdentifier]);
             $device = $existing->fetch();
+            if (!is_array($device) && $previousDeviceIdentifier !== $deviceIdentifier
+                && preg_match('/^[a-f0-9]{64}$/', $previousDeviceIdentifier)) {
+                $legacy = $this->pdo->prepare(
+                    'SELECT id,status FROM application_devices WHERE license_registry_id=:license_id AND device_identifier=:device_identifier LIMIT 1 FOR UPDATE'
+                );
+                $legacy->execute(['license_id' => $row['id'], 'device_identifier' => $previousDeviceIdentifier]);
+                $device = $legacy->fetch();
+                if (is_array($device) && $device['status'] === 'active') {
+                    $migrate = $this->pdo->prepare(
+                        'UPDATE application_devices SET device_identifier=:device_identifier,device_name=:device_name,platform=:platform,last_seen_at=UTC_TIMESTAMP() WHERE id=:id'
+                    );
+                    $migrate->execute(['device_identifier' => $deviceIdentifier, 'device_name' => mb_substr(trim($deviceName) ?: 'PC Windows', 0, 190), 'platform' => $platform, 'id' => $device['id']]);
+                }
+            }
             if (is_array($device) && $device['status'] === 'revoked') {
                 throw new RuntimeException('DEVICE_REVOKED', 403);
             }
@@ -94,8 +108,8 @@ final class ApplicationAccess
                     'device_name' => mb_substr(trim($deviceName) ?: 'Mobile / tablette', 0, 190),
                 ]);
             } else {
-                $touch = $this->pdo->prepare('UPDATE application_devices SET last_seen_at=UTC_TIMESTAMP(),device_name=:device_name WHERE id=:id');
-                $touch->execute(['device_name' => mb_substr(trim($deviceName) ?: 'Mobile / tablette', 0, 190), 'id' => $device['id']]);
+                $touch = $this->pdo->prepare('UPDATE application_devices SET last_seen_at=UTC_TIMESTAMP(),device_name=:device_name,platform=:platform WHERE id=:id');
+                $touch->execute(['device_name' => mb_substr(trim($deviceName) ?: 'Mobile / tablette', 0, 190), 'platform' => $platform, 'id' => $device['id']]);
             }
             $this->pdo->commit();
         } catch (\Throwable $exception) {

@@ -44,7 +44,15 @@ try {
         }
         $statement = $pdo->prepare($sql . ' ORDER BY r.created_at DESC');
         $statement->execute($parameters);
-        echo json_encode(['licenses' => array_map(static fn (array $row): array => [
+        $licenses = $statement->fetchAll();
+        $current = $pdo->prepare(
+            "SELECT issuer_license_id FROM organization_license_registry
+             WHERE organization_id=:organization_id AND assigned_user_id=:user_id
+               AND license_type='user' AND status='active' ORDER BY id DESC LIMIT 1"
+        );
+        $current->execute(['organization_id' => $organizationId, 'user_id' => $userId]);
+        $currentLicenseId = $current->fetchColumn();
+        echo json_encode(['currentLicenseId' => is_string($currentLicenseId) ? $currentLicenseId : null, 'licenses' => array_map(static fn (array $row): array => [
             'id' => $row['issuer_license_id'],
             'type' => $row['license_type'],
             'role' => $row['license_role'],
@@ -53,7 +61,7 @@ try {
             'source' => $row['source'],
             'expiresAt' => $row['expires_at'],
             'lastOnlineCheckAt' => $row['last_online_check_at'],
-        ], $statement->fetchAll())], JSON_UNESCAPED_UNICODE);
+        ], $licenses)], JSON_UNESCAPED_UNICODE);
         exit;
     }
 

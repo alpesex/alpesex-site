@@ -70,7 +70,8 @@ try {
             trim((string) ($input['licenseToken'] ?? '')),
             strtolower(trim((string) ($input['deviceIdentifier'] ?? ''))),
             trim((string) ($input['deviceName'] ?? '')),
-            trim((string) ($input['platform'] ?? 'web'))
+            trim((string) ($input['platform'] ?? 'web')),
+            strtolower(trim((string) ($input['previousDeviceIdentifier'] ?? '')))
         );
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['user' => $user, 'activation' => $activation], JSON_UNESCAPED_UNICODE);
@@ -105,7 +106,7 @@ try {
 
     if ($action === 'devices' && $method === 'GET') {
         $query = $pdo->prepare(
-            'SELECT d.id,d.device_name,d.platform,d.status,d.first_seen_at,d.last_seen_at,r.issuer_license_id
+            'SELECT d.id,d.device_identifier,d.device_name,d.platform,d.status,d.first_seen_at,d.last_seen_at,r.issuer_license_id
              FROM application_devices d
              INNER JOIN organization_license_registry r ON r.id=d.license_registry_id
              WHERE d.organization_id=:organization_id AND (:is_manager=1 OR d.user_id=:user_id)
@@ -117,6 +118,7 @@ try {
             'id' => (int) $row['id'], 'name' => $row['device_name'], 'platform' => $row['platform'],
             'status' => $row['status'], 'licenseId' => $row['issuer_license_id'],
             'firstSeenAt' => $row['first_seen_at'], 'lastSeenAt' => $row['last_seen_at'],
+            'current' => hash_equals((string) ($_SESSION['application_device'] ?? ''), (string) $row['device_identifier']),
         ], $query->fetchAll())], JSON_UNESCAPED_UNICODE);
         exit;
     }
