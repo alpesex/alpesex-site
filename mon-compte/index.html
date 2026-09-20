@@ -36,7 +36,7 @@
       <div class="grid metrics">
         <article><span>Organisation</span><strong id="organization-name">—</strong><small id="organization-status">—</small></article>
         <article><span>Abonnement</span><strong>À configurer</strong><small>Aucune offre active enregistrée</small></article>
-        <article><span>Ma licence CPMP — ASM</span><strong id="current-license-number">—</strong><small id="current-license-status">Chargement…</small></article>
+        <article><span>Ma licence CPMP — ASM</span><small>N° de licence</small><strong id="current-license-number" class="license-number">—</strong><button id="copy-current-license" class="copy-license" type="button" data-copy-license="" hidden>Copier le numéro</button><small id="current-license-status">Chargement…</small></article>
         <article data-role="manager"><span>Équipe</span><strong>1</strong><small>Premier gestionnaire</small></article>
       </div>
       <section id="organization" class="panel" data-role="manager">
@@ -93,6 +93,7 @@
       <section id="profile" class="panel"><p class="eyebrow">INFORMATIONS PERSONNELLES</p><h2>Mon profil</h2><dl id="profile-details"></dl><p class="support">Besoin d’aide ? <a href="mailto:contact@alpes-ex.fr">contact@alpes-ex.fr</a></p></section>
     </section>
   </main>
+  <p id="license-copy-feedback" class="copy-feedback" role="status" aria-live="polite"></p>
   <script src="mon-compte.js"></script>
 </body>
 </html>
