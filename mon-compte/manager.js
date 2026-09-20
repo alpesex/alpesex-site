@@ -49,6 +49,7 @@ window.ManagerPortal=(()=>{
     if(unavailable.length)document.querySelector('#license-stock').innerHTML+='<p>'+unavailable.length+' licence(s) indisponible(s) : expiration, suspension ou Master inactive.</p>';
     document.querySelector('#members-list').innerHTML=data.members.map(p=>'<div class="team-row"><div><strong>'+esc(name(p))+'</strong><small>'+esc(p.email)+'</small>'+recipientActions(p,'member')+'</div><div><span class="team-badge">'+esc(emailLicense(p.email)?type(emailLicense(p.email)):'Sans licence')+'</span></div></div>').join('')||'<p>Aucun membre.</p>';
     document.querySelector('#invitations-list').innerHTML=data.invitations.map(p=>'<div class="team-row"><div><strong>'+esc(name(p))+'</strong><small>'+esc(p.email)+'</small>'+recipientActions(p,'invitation')+'</div><div><span class="team-badge">'+esc(emailLicense(p.email)?'Licence réservée':'Sans licence')+'</span><small>Invitation en attente</small></div></div>').join('')||'<p>Aucune invitation en attente.</p>';
+    if(window.TeamHierarchyUI)await window.TeamHierarchyUI.refresh();
   }
   function assignment(licenseId,kind,id){
     open('Attribuer une licence');

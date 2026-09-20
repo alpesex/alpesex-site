@@ -4,7 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0f172a">
   <title>Mon compte — ALPES'Ex</title>
-  <link rel="icon" href="../assets/favicon.ico" sizes="any"><link rel="stylesheet" href="mon-compte.css?v=gestionnaire-3">
+  <link rel="icon" href="../assets/favicon.ico" sizes="any"><link rel="stylesheet" href="mon-compte.css?v=organigramme-1">
 </head>
 <body>
   <header>
@@ -85,6 +85,7 @@
           <div class="invite-grid"><label>Adresse e-mail<input name="email" type="email" autocomplete="off" required></label><label>Future licence<select name="licenseType"><option value="user">Utilisateur</option><option value="manager">Manager</option><option value="direction">Direction</option></select></label></div>
           <button type="submit">Envoyer l’invitation</button><p id="invite-message" role="status"></p>
         </form>
+        <section id="team-hierarchy" class="team-hierarchy" data-role="manager" aria-label="Organigramme"></section>
         <h3 class="team-heading">Membres de l’organisation</h3><div id="members-list" class="team-list"><p>Chargement…</p></div>
         <h3 class="team-heading">Invitations en attente</h3><div id="invitations-list" class="team-list"><p>Aucune invitation en attente.</p></div>
       </section>
@@ -96,7 +97,8 @@
   <p id="license-copy-feedback" class="copy-feedback" role="status" aria-live="polite"></p>
   <dialog id="manager-dialog" aria-labelledby="manager-dialog-title"><div class="dialog-header"><h2 id="manager-dialog-title"></h2><button type="button" id="manager-dialog-close" aria-label="Fermer">Fermer</button></div><div id="manager-dialog-content"></div><p id="manager-dialog-message" role="status"></p></dialog>
   <p id="manager-feedback" class="copy-feedback" role="status"></p>
-  <script src="manager.js?v=gestionnaire-3"></script>
-  <script src="mon-compte.js?v=gestionnaire-3"></script>
+  <script src="manager.js?v=organigramme-1"></script>
+  <script src="hierarchy.js?v=organigramme-1"></script>
+  <script src="mon-compte.js?v=organigramme-1"></script>
 </body>
 </html>
