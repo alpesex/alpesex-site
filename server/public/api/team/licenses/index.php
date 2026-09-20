@@ -33,6 +33,28 @@ try {
     $services = require $appDirectory . '/bootstrap.php';
     $pdo = Database::connect($services['config']);
     if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') {
+        // Return a signed key only on explicit request, within the session's scope.
+        if (isset($_GET['licenseId'])) {
+            $licenseId = $_GET['licenseId'];
+            if (!is_string($licenseId) || $licenseId === '' || strlen($licenseId) > 100) {
+                throw new RuntimeException('Identifiant de licence invalide.');
+            }
+            $sql = 'SELECT license_token FROM organization_license_registry
+                    WHERE organization_id=:organization_id AND issuer_license_id=:license_id';
+            // Even managers may retrieve only a key personally assigned to them.
+            $sql .= ' AND assigned_user_id=:user_id';
+            $parameters = ['organization_id' => $organizationId, 'license_id' => $licenseId, 'user_id' => $userId];
+            $statement = $pdo->prepare($sql . ' LIMIT 1');
+            $statement->execute($parameters);
+            $token = $statement->fetchColumn();
+            if (!is_string($token) || $token === '') {
+                http_response_code(404);
+                echo json_encode(['message' => 'Clé de licence indisponible.'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            echo json_encode(['licenseToken' => $token], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
         $sql = 'SELECT r.issuer_license_id,r.license_type,r.license_role,r.assigned_email,
                        r.status,r.source,r.expires_at,r.last_online_check_at
                 FROM organization_license_registry r
