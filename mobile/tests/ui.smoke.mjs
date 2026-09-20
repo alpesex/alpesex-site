@@ -31,7 +31,7 @@ try {
       let body = {}, status = 200;
       if (action === 'session') { status = 401; body = { error: 'AUTHENTICATION_REQUIRED' }; }
       if (action === 'activate') body = { user: {id:1,organizationId:1,email:'smoke@example.test',role:'user'}, activation:{role:'user'} };
-      if (action === 'projects') body = {projects:[{id:'cloud',localId:'SMOKE',revision,access:'editor',data:project}]};
+      if (action === 'projects') body = {projects:project?[{id:'cloud',localId:'SMOKE',revision,access:'editor',hasDocuments:false,data:project}]:[]};
       if (action === 'project-save') {
         const input=route.request().postDataJSON();
         const localId=input.project?.meta?.portfolioId;
@@ -40,6 +40,7 @@ try {
         else {project=input.project;revision++;body={id:'cloud',revision,access:'editor'};}
       }
       if (action === 'documents-status') body = {documents:[]};
+      if (action === 'project-delete') { project=null; body={ok:true,cleanupPending:0}; }
       await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
     });
     await page.goto(`http://127.0.0.1:${server.address().port}/application/`);
@@ -107,12 +108,24 @@ try {
     await recoverCloud.click();
     await page.waitForFunction(() => document.getElementById('projectList').textContent.includes('Version concurrente'));
     assert.equal(await page.evaluate(() => Object.keys(window.erpAsmProjects.drafts()).length),0);
+    await page.evaluate(() => renderPortfolio(true));
+    page.once('dialog',dialog=>dialog.accept());
+    await page.locator('.project-card',{hasText:'Version concurrente'}).locator('.project-delete').click();
+    await page.waitForFunction(() => !document.getElementById('projectList').textContent.includes('Version concurrente'));
     await page.locator('#logoutButton').click();
     await page.locator('#authScreen').waitFor({state:'visible'});
     await page.getByRole('button',{name:'Connexion',exact:true}).waitFor({state:'visible'});
     assert.equal(await page.evaluate(() => localStorage.getItem('pcasm_pro_projects')), null);
+    assert.equal(await page.evaluate(() => localStorage.getItem('alpesex.application.license')), 'test-license');
+    await page.getByRole('button',{name:'Connexion',exact:true}).click();
+    await page.locator('#authEmail').waitFor({state:'visible'});
+    assert.equal(await page.locator('#authLicenseLabel').isHidden(), true);
+    await page.locator('#authEmail').fill('smoke@example.test');
+    await page.locator('#authPassword').fill('test-password-123');
+    await page.locator('#authForm button[type="submit"]').click();
+    await page.locator('#authScreen').waitFor({state:'hidden'});
     assert.deepEqual(errors, [], `JavaScript errors at ${width}px`);
-    console.log(`Login, new project, portfolio, PC view/edit, DC edit, automatic save/pull, conflict recovery, logout: OK (${width}px; mocked API)`);
+    console.log(`Login, new project, deletion, sync, conflict recovery and relogin: OK (${width}px; mocked API)`);
     await page.close();
   }
   const ios = await browser.newContext({userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1',viewport:{width:390,height:844}});

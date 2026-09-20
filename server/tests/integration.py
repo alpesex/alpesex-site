@@ -60,7 +60,7 @@ with tempfile.TemporaryDirectory(prefix='cpmp-api-test-') as directory:
                 except OSError:
                     time.sleep(.05)
             assert status == 200, (status, result)
-            project = {'meta': {'portfolioId': 'shared-test', 'nomProjet': 'Shared project'}, 'todo': []}
+            project = {'meta': {'portfolioId': 'shared-test', 'nomProjet': 'Shared project', 'referenceProjet': 'REF-001'}, 'todo': []}
             status, saved = call('project-save', {'project': project, 'revision': 0})
             assert status == 200 and saved['revision'] == 1, (status, saved)
             project_id = saved['id']
@@ -69,9 +69,14 @@ with tempfile.TemporaryDirectory(prefix='cpmp-api-test-') as directory:
                                  lambda: call('project-save', {'project': project, 'revision': 1}, copy=2)])
             assert sorted(x[0] for x in attempts) == [200, 409], attempts
             assert call('project-save', {'project': project, 'revision': 2}, user=3)[0] == 403
-            renamed = {'meta': {'portfolioId': 'changed-local-id', 'cloudId': project_id, 'nomProjet': 'Shared project'}, 'todo': []}
+            renamed = {'meta': {'portfolioId': 'changed-local-id', 'cloudId': project_id, 'nomProjet': 'Shared project', 'referenceProjet': 'REF-001'}, 'todo': []}
             status, renamed_saved = call('project-save', {'project': renamed, 'revision': 2})
             assert status == 200 and renamed_saved['id'] == project_id and renamed_saved['revision'] == 3, (status, renamed_saved)
+            duplicate = {'meta': {'portfolioId': 'duplicate-local-id', 'nomProjet': 'Older duplicate', 'referenceProjet': 'REF-001'}, 'todo': []}
+            status, duplicate_saved = call('project-save', {'project': duplicate, 'revision': 0})
+            assert status == 200 and duplicate_saved['id'] != project_id
+            status, pruned = call('project-prune', {'canonicalId': project_id, 'duplicateIds': [duplicate_saved['id']]})
+            assert status == 200 and pruned['deletedIds'] == [duplicate_saved['id']], (status, pruned)
             status, current_projects = call('projects')
             assert status == 200 and len(current_projects['projects']) == 1 and current_projects['projects'][0]['localId'] == 'changed-local-id'
             status, manager = call('projects', user=2)
