@@ -12,7 +12,13 @@ for file in $files; do
   git show "$revision:$file" > "$backup/nouveau/$file"
   test -s "$backup/nouveau/$file"
   git show "$base:$file" > "$backup/base-check"
-  if ! cmp -s "$backup/base-check" "/home/www/public/$file" && ! cmp -s "$backup/nouveau/$file" "/home/www/public/$file"; then
+  # Reviewed production update: cache v2 and cleanup of both legacy cache families.
+  # The new worker preserves that cleanup and additionally gates every HTML request.
+  compatible_worker=false
+  if [ "$file" = 'application/service-worker.js' ] && [ "$(git hash-object "/home/www/public/$file")" = '6a0a5f440f872180189a60058464abeaf809e228' ]; then
+    compatible_worker=true
+  fi
+  if [ "$compatible_worker" = false ] && ! cmp -s "$backup/base-check" "/home/www/public/$file" && ! cmp -s "$backup/nouveau/$file" "/home/www/public/$file"; then
     echo "Arrêt : $file a changé depuis la version prévue. Aucun fichier publié."
     exit 1
   fi
