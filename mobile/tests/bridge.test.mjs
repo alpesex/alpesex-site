@@ -66,3 +66,14 @@ test('native activation uses the native platform and HTTPS API origin', async ()
   assert.equal(calls[1].url,'https://alpes-ex.fr/api/application/?action=activate');
   assert.equal(JSON.parse(calls[1].options.body).platform,'ios');
 });
+test('Windows activation migrates the previous random identifier to the stable device identity', async () => {
+  const previous = 'a'.repeat(64), stable = 'b'.repeat(64), data = new Map([['alpesex.application.device', previous]]), calls=[];
+  const window={cpmpNative:{origin:'https://alpes-ex.fr',platform:'windows',deviceIdentity:async()=>({identifier:stable,name:'POSTE-LUCAS — Windows'})},addEventListener(){}};
+  vm.runInNewContext(source,{window,navigator:{onLine:true},localStorage:{getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,String(v)),removeItem:k=>data.delete(k)},crypto:globalThis.crypto,Uint8Array,atob,fetch:async(url,options)=>{calls.push({url,options});return {ok:true,headers:{get:()=> 'application/json'},json:async()=>({user:{id:1,organizationId:1,email:'test@example.test'},activation:{role:'user'}})}}});
+  await window.erpAsmAuth.login({email:'test@example.test',password:'unused',licenseToken:'token'});
+  const activation = JSON.parse(calls[1].options.body);
+  assert.equal(activation.deviceIdentifier, stable);
+  assert.equal(activation.previousDeviceIdentifier, previous);
+  assert.equal(activation.deviceName, 'POSTE-LUCAS — Windows');
+  assert.equal(data.get('alpesex.application.device'), stable);
+});
