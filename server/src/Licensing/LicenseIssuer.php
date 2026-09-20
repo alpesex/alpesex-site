@@ -66,6 +66,20 @@ final class LicenseIssuer
         return $body . '.' . $this->base64UrlEncode($signature);
     }
 
+    /** Reissue an existing, verified seat without changing its role, Master or expiry. */
+    public function reassignUser(array $claims, string $email): string
+    {
+        if (($claims['type'] ?? '') !== 'user' || !in_array($claims['schema'] ?? null, [1, 2], true)
+            || filter_var($email, FILTER_VALIDATE_EMAIL) === false || $email !== strtolower(trim($email))) {
+            throw new RuntimeException('Réattribution de licence invalide.');
+        }
+        $claims['email'] = $email;
+        $claims['issuedAt'] = max((int) ($claims['issuedAt'] ?? 0) + 1, (int) floor(microtime(true) * 1000));
+        $claims['maxDevices'] = 3;
+        $body = $this->base64UrlEncode(json_encode($claims, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+        return $body . '.' . $this->base64UrlEncode(sodium_crypto_sign_detached('ASM-LICENSE-V1.' . $body, $this->secretKey()));
+    }
+
     private function secretKey(): string
     {
         if (!extension_loaded('sodium')) {

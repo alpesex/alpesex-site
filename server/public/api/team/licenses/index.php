@@ -112,18 +112,7 @@ try {
         exit;
     }
 
-    $memberId = filter_var(is_array($input) ? ($input['memberId'] ?? null) : null, FILTER_VALIDATE_INT);
-    if (!$memberId) {
-        throw new RuntimeException('Membre invalide.');
-    }
-    $manager = new MemberManager($pdo, new TransactionalMailer($services['mailer']));
-    $result = $manager->assignUserLicense((int)$organizationId, (int)$memberId);
-    http_response_code(201);
-    echo json_encode([
-        'message'=>'Licence affectée et envoyée par e-mail.',
-        'licenseNumber'=>$result['licenseNumber'],
-        'reused'=>$result['reused'],
-    ],JSON_UNESCAPED_UNICODE);
+    throw new RuntimeException('Choisissez la licence et son destinataire dans la rubrique Licences en stock.');
 } catch (JsonException) {
     http_response_code(400);
     echo json_encode(['message'=>'Données JSON invalides.'],JSON_UNESCAPED_UNICODE);

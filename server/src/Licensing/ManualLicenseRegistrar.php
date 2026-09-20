@@ -30,6 +30,8 @@ final class ManualLicenseRegistrar
 
         $this->pdo->beginTransaction();
         try {
+            $lock = $this->pdo->prepare('SELECT id FROM organizations WHERE id=? FOR UPDATE');
+            $lock->execute([$organizationId]);
             $duplicate = $this->pdo->prepare(
                 'SELECT organization_id FROM organization_license_registry
                  WHERE issuer_license_id=:license_id OR token_hash=:token_hash LIMIT 1 FOR UPDATE'

@@ -4,7 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0f172a">
   <title>Mon compte — ALPES'Ex</title>
-  <link rel="icon" href="../assets/favicon.ico" sizes="any"><link rel="stylesheet" href="mon-compte.css?v=espace-client-2">
+  <link rel="icon" href="../assets/favicon.ico" sizes="any"><link rel="stylesheet" href="mon-compte.css?v=gestionnaire-3">
 </head>
 <body>
   <header>
@@ -23,7 +23,7 @@
         <a data-role="manager" href="#billing">Commandes et factures</a>
         <a href="#licenses">Licences</a>
         <a data-role="manager" href="#team">Équipe et invitations</a>
-        <a href="#devices">Sécurité</a>
+        <a data-role="user" href="#devices">Sécurité</a>
         <a href="#downloads">Applications</a>
         <a href="#profile">Mon profil</a>
       </nav>
@@ -37,7 +37,7 @@
         <article><span>Organisation</span><strong id="organization-name">—</strong><small id="organization-status">—</small></article>
         <article><span>Abonnement</span><strong>À configurer</strong><small>Aucune offre active enregistrée</small></article>
         <article><span>Ma licence CPMP — ASM</span><small>Référence de licence</small><strong id="current-license-number" class="license-number">—</strong><div id="current-license-key"></div><small id="current-license-status">Chargement…</small></article>
-        <article data-role="manager"><span>Équipe</span><strong>1</strong><small>Premier gestionnaire</small></article>
+        <article data-role="manager"><span>Équipe</span><strong id="licensed-team-count">—</strong><small>Personnes invitées avec une licence attribuée</small></article>
       </div>
       <section id="organization" class="panel" data-role="manager">
         <div class="panel-title"><div><p class="eyebrow">ENTREPRISE</p><h2>Organisation</h2></div><span class="status">Compte actif</span></div>
@@ -75,8 +75,8 @@
             <p id="manual-license-message" role="status"></p>
           </form>
         </div>
-        <h3>Licences enregistrées</h3>
-        <div id="licenses-list" class="license-list"><p>Chargement…</p></div>
+        <h3 id="licenses-heading">Licences enregistrées</h3>
+        <div id="licenses-list" class="license-list"><p>Chargement…</p></div><div id="master-licenses" data-role="manager"></div><div data-role="manager" class="stock-section"><h3>Licences en stock</h3><p>Licences disponibles, non attribuées.</p><div id="license-stock"></div></div>
       </section>
       <section id="team" class="panel" data-role="manager">
         <p class="eyebrow">COLLABORATEURS</p><h2>Équipe et invitations</h2>
@@ -88,12 +88,15 @@
         <h3 class="team-heading">Membres de l’organisation</h3><div id="members-list" class="team-list"><p>Chargement…</p></div>
         <h3 class="team-heading">Invitations en attente</h3><div id="invitations-list" class="team-list"><p>Aucune invitation en attente.</p></div>
       </section>
-      <section id="devices" class="panel"><p class="eyebrow">SÉCURITÉ</p><h2>Sécurité des appareils</h2><div class="device-tabs" role="tablist" aria-label="État des appareils"><button id="devices-active-tab" type="button" role="tab" aria-selected="true" aria-controls="devices-active-panel" data-device-tab="active">Actifs <span id="active-device-count">0</span></button><button id="devices-revoked-tab" type="button" role="tab" aria-selected="false" aria-controls="devices-revoked-panel" tabindex="-1" data-device-tab="revoked">Révoqués <span id="revoked-device-count">0</span></button></div><div id="devices-active-panel" role="tabpanel" aria-labelledby="devices-active-tab" tabindex="0"><div id="application-devices" class="team-list"><p>Chargement…</p></div></div><div id="devices-revoked-panel" role="tabpanel" aria-labelledby="devices-revoked-tab" tabindex="0" hidden><div id="revoked-devices" class="team-list"><p>Chargement…</p></div></div><p class="device-note">Chaque licence accepte au maximum trois appareils. La révocation prend effet dès la prochaine connexion.</p></section>
-      <section id="downloads" class="panel"><p class="eyebrow">APPLICATIONS</p><h2>CPMP — ASM</h2><p class="section-copy">Vos données sont stockées sur un serveur privé sécurisé.</p><div class="application-downloads"><article class="empty"><strong>Smartphone et tablette</strong><p>Accédez à CPMP — ASM depuis votre navigateur mobile.</p><a class="application-action" href="../application/">Ouvrir la version web</a></article><article class="empty"><strong>PC Windows</strong><p>Installez CPMP — ASM sur votre ordinateur.</p><a class="application-action" href="../api/downloads/windows/">Télécharger la version PC</a></article></div></section>
+      <section id="devices" class="panel" data-role="user"><p class="eyebrow">SÉCURITÉ</p><h2>Sécurité des appareils</h2><div class="device-tabs" role="tablist" aria-label="État des appareils"><button id="devices-active-tab" type="button" role="tab" aria-selected="true" aria-controls="devices-active-panel" data-device-tab="active">Actifs <span id="active-device-count">0</span></button><button id="devices-revoked-tab" type="button" role="tab" aria-selected="false" aria-controls="devices-revoked-panel" tabindex="-1" data-device-tab="revoked">Révoqués <span id="revoked-device-count">0</span></button></div><div id="devices-active-panel" role="tabpanel" aria-labelledby="devices-active-tab" tabindex="0"><div id="application-devices" class="team-list"><p>Chargement…</p></div></div><div id="devices-revoked-panel" role="tabpanel" aria-labelledby="devices-revoked-tab" tabindex="0" hidden><div id="revoked-devices" class="team-list"><p>Chargement…</p></div></div><p class="device-note">Chaque licence accepte au maximum trois appareils. La révocation prend effet dès la prochaine connexion.</p></section>
+      <section id="downloads" class="panel"><p class="eyebrow">APPLICATIONS</p><h2>CPMP — ASM</h2><p class="section-copy">Vos données sont stockées sur un serveur privé sécurisé.</p><article class="it-download" data-role="manager"><p class="eyebrow">ADMINISTRATION DE L’ENTREPRISE</p><h3>IT-ASM</h3><p>Application d’administration destinée au gestionnaire et au service informatique.</p><a class="application-action" href="../api/downloads/it/">Télécharger IT-ASM pour Windows</a></article><div class="application-downloads"><article class="empty"><strong>Smartphone et tablette</strong><p>Accédez à CPMP — ASM depuis votre navigateur mobile.</p><a class="application-action" href="../application/">Ouvrir la version web</a></article><article class="empty"><strong>PC Windows</strong><p>Installez CPMP — ASM sur votre ordinateur.</p><a class="application-action" href="../api/downloads/windows/">Télécharger la version PC</a></article></div></section>
       <section id="profile" class="panel"><p class="eyebrow">INFORMATIONS PERSONNELLES</p><h2>Mon profil</h2><dl id="profile-details"></dl><p class="support">Besoin d’aide ? <a href="mailto:contact@alpes-ex.fr">contact@alpes-ex.fr</a></p></section>
     </section>
   </main>
   <p id="license-copy-feedback" class="copy-feedback" role="status" aria-live="polite"></p>
-  <script src="mon-compte.js?v=espace-client-2"></script>
+  <dialog id="manager-dialog" aria-labelledby="manager-dialog-title"><div class="dialog-header"><h2 id="manager-dialog-title"></h2><button type="button" id="manager-dialog-close" aria-label="Fermer">Fermer</button></div><div id="manager-dialog-content"></div><p id="manager-dialog-message" role="status"></p></dialog>
+  <p id="manager-feedback" class="copy-feedback" role="status"></p>
+  <script src="manager.js?v=gestionnaire-3"></script>
+  <script src="mon-compte.js?v=gestionnaire-3"></script>
 </body>
 </html>
