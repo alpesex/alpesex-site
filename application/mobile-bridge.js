@@ -1,0 +1,318 @@
+(function () {
+  'use strict';
+
+  const origin = window.cpmpNative?.origin || '';
+  const API = origin + '/api/application/';
+  const AUTH = origin + '/api/auth/';
+  const licenseKey = 'alpesex.application.license';
+  const deviceKey = 'alpesex.application.device';
+  const revisionKey = 'alpesex.application.revisions';
+  // Capture this before the V5.4.18 interface can seed its demonstration data.
+  // A pre-existing value is a real Windows/PWA portfolio eligible for migration.
+  const hadLegacyPortfolio = localStorage.getItem('pcasm_pro_projects') !== null;
+  let currentSession = null;
+  let projectCache = [];
+
+  function errorText(code, body = {}) {
+    if (code === 'DEVICE_ALREADY_CONNECTED') {
+      return 'Un autre appareil est déjà connecté : ' + (body.deviceName || 'appareil inconnu');
+    }
+    return ({
+      AUTHENTICATION_REQUIRED: 'Connectez-vous avec votre compte ALPES’Ex.',
+      LICENSE_ACTIVATION_REQUIRED: 'Saisissez votre licence utilisateur pour activer cet appareil.',
+      LICENSE_INVALID: 'Cette licence est absente, expirée, suspendue ou révoquée.',
+      LICENSE_ACCOUNT_MISMATCH: 'Cette licence n’est pas affectée à ce compte.',
+      DEVICE_LIMIT_REACHED: 'Cette licence est déjà active sur trois appareils.',
+      DEVICE_REVOKED: 'Cet appareil a été révoqué.',
+      READ_ONLY: 'Ce projet est accessible en lecture seule.',
+      PROJECT_DELETED: 'Ce projet a été supprimé sur un autre appareil.',
+      PROJECT_NOT_FOUND: 'Ce projet n’est plus accessible.',
+      PROJECT_CONFLICT: 'Le projet a été modifié sur un autre appareil. Rechargez les données.',
+      DOCUMENT_TOO_LARGE: 'Le document dépasse la limite de 1 Mo.',
+      DOCUMENT_NOT_FOUND: 'Ce document n’est pas accessible sur le Cloud.',
+      APPLICATION_UNAVAILABLE: 'L’application ALPES’Ex est momentanément indisponible.'
+    })[code] || code || 'Opération impossible.';
+  }
+
+  async function request(url, options) {
+    const response = await fetch(url, { credentials: 'include', ...options });
+    const type = response.headers.get('content-type') || '';
+    const body = type.includes('application/json') ? await response.json().catch(() => ({})) : null;
+    if (!response.ok) { const error = new Error(errorText(body?.error || body?.message, body)); error.code = body?.error; throw error; }
+    return body;
+  }
+
+  function claims(token) {
+    try {
+      const value = String(token || '').split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
+      return JSON.parse(decodeURIComponent(Array.from(atob(value), c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join('')));
+    } catch (_) { return {}; }
+  }
+
+  async function deviceIdentity() {
+    const previous = localStorage.getItem(deviceKey);
+    if (typeof window.cpmpNative?.deviceIdentity === 'function') {
+      try {
+        const native = await window.cpmpNative.deviceIdentity();
+        if (/^[a-f0-9]{64}$/.test(native?.identifier || '')) {
+          localStorage.setItem(deviceKey, native.identifier);
+          return {identifier:native.identifier, previous:/^[a-f0-9]{64}$/.test(previous || '') && previous !== native.identifier ? previous : null, name:native.name || 'PC Windows'};
+        }
+      } catch (_) {}
+    }
+    if (/^[a-f0-9]{64}$/.test(previous || '')) return {identifier:previous, previous:null, name:`${navigator.platform || 'Mobile'} - CPMP ASM`};
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    const value = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+    localStorage.setItem(deviceKey, value);
+    return {identifier:value, previous:null, name:`${navigator.platform || 'Mobile'} - CPMP ASM`};
+  }
+
+  function revisions() {
+    try { return JSON.parse(localStorage.getItem(revisionKey) || '{}'); } catch (_) { return {}; }
+  }
+
+  function saveRevision(localId, revision) {
+    const all = revisions(); all[localId] = revision;
+    localStorage.setItem(revisionKey, JSON.stringify(all));
+  }
+
+  function projectReference(item) {
+    return String(item?.data?.meta?.referenceProjet || '').trim().toUpperCase().replace(/\s+/g, ' ');
+  }
+
+  function isFresher(left, right) {
+    const leftScore = [
+      left.hasDocuments ? 1 : 0,
+      String(left?.data?.meta?.derniereMiseAJour || ''),
+      String(left.updatedAt || ''),
+      Number(left.revision || 0)
+    ];
+    const rightScore = [
+      right.hasDocuments ? 1 : 0,
+      String(right?.data?.meta?.derniereMiseAJour || ''),
+      String(right.updatedAt || ''),
+      Number(right.revision || 0)
+    ];
+    return leftScore.join('|') > rightScore.join('|');
+  }
+
+  function clearProjectState(localIds) {
+    const all = revisions();
+    for (const localId of localIds) {
+      delete all[localId];
+      queue.remove(localId);
+    }
+    localStorage.setItem(revisionKey, JSON.stringify(all));
+  }
+
+  async function projects() {
+    const result = await request(API + '?action=projects');
+    const raw = result.projects || [];
+    const groups = new Map();
+    const standalone = [];
+    for (const item of raw) {
+      const reference = projectReference(item);
+      if (!reference) {
+        standalone.push(item);
+        continue;
+      }
+      const key = String(item.ownerEmail || '') + '|' + reference;
+      const group = groups.get(key) || [];
+      group.push(item);
+      groups.set(key, group);
+    }
+    const cleaned = [...standalone];
+    for (const group of groups.values()) {
+      if (group.length === 1) {
+        cleaned.push(group[0]);
+        continue;
+      }
+      const canonical = group.reduce((best, item) => isFresher(item, best) ? item : best);
+      const duplicates = group.filter(item => item.id !== canonical.id);
+      // A duplicate containing documents is never removed automatically.
+      if (duplicates.some(item => item.hasDocuments)) {
+        cleaned.push(...group);
+        continue;
+      }
+      try {
+        const pruned = await request(API + '?action=project-prune', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({canonicalId: canonical.id, duplicateIds: duplicates.map(item => item.id)})
+        });
+        const removed = new Set(pruned.deletedIds || []);
+        const removedLocalIds = duplicates.filter(item => removed.has(item.id)).map(item => item.localId);
+        clearProjectState(removedLocalIds);
+        cleaned.push(canonical, ...duplicates.filter(item => !removed.has(item.id)));
+      } catch (_) {
+        // Never hide a row if the server could not safely remove it.
+        cleaned.push(...group);
+      }
+    }
+    projectCache = cleaned.sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')));
+    // Revisions belong to the loaded snapshot, never to a background listing.
+    return projectCache;
+  }
+
+  async function cloudProject(project) {
+    const localId = String(project?.id || project?.meta?.portfolioId || '');
+    let found = projectCache.find(item => item.localId === localId);
+    if (!found) found = (await projects()).find(item => item.localId === localId);
+    if (found) return found;
+    const minimal = project?.meta ? project : { meta: { portfolioId: localId, nomProjet: project?.name || 'Projet CPMP - ASM' } };
+    const result = await window.erpAsmProjects.save(minimal);
+    return { id: result.id, localId, revision: result.revision, access: 'editor', data: minimal };
+  }
+
+  window.erpAsmAuth = {
+    async state() {
+      const token = localStorage.getItem(licenseKey) || '';
+      try {
+        const result = await request(API + '?action=session');
+        currentSession = result.user;
+        return { configured: true, online: true, needsLicense: false, email: result.user.email, licenseEmail: claims(token).email || result.user.email, licenseToken: token, rememberMe: true };
+      } catch (_) {
+        return { configured: false, online: navigator.onLine, needsLicense: !token, email: claims(token).email || '', licenseEmail: claims(token).email || '', licenseToken: token, rememberMe: true };
+      }
+    },
+    async login(payload) {
+      const token = String(payload.licenseToken || localStorage.getItem(licenseKey) || '').trim();
+      const role = String(claims(token).role || 'user').toLowerCase();
+      await request(AUTH + 'login/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: payload.email, password: payload.password, profileType: role === 'manager' ? 'manager' : 'user', remember: Boolean(payload.rememberMe) }) });
+      const device = await deviceIdentity();
+      const activated = await request(API + '?action=activate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ licenseToken: token, deviceIdentifier: device.identifier, previousDeviceIdentifier: device.previous, deviceName: device.name, platform: window.cpmpNative?.platform || 'web' }) });
+      localStorage.setItem(licenseKey, token);
+      currentSession = activated.user;
+      const account = `${currentSession.organizationId}:${currentSession.id}`;
+      const previousAccount = localStorage.getItem('alpesex.application.account');
+      let legacyProjects = [];
+      if (previousAccount === null && hadLegacyPortfolio) {
+        try { legacyProjects = JSON.parse(localStorage.getItem('pcasm_pro_projects') || '[]'); }
+        catch (_) { legacyProjects = []; }
+      }
+      if (previousAccount !== null && previousAccount !== account) {
+        localStorage.removeItem('pcasm_pro_projects');
+        localStorage.removeItem(revisionKey);
+        localStorage.removeItem('alpesex.application.drafts');
+      }
+      localStorage.setItem('alpesex.application.account', account);
+      for (const project of Array.isArray(legacyProjects) ? legacyProjects : []) {
+        if (project?.meta?.portfolioId) queue.stage(project, 0);
+      }
+      projectCache = [];
+      const effectiveRole = activated.activation.role || activated.user.role;
+      return { company: 'Organisation ASM', manager: activated.user.email, email: activated.user.email, role: effectiveRole, mode: effectiveRole === 'direction' ? 'viewer' : 'manager', offline: false, mustChangePassword: false };
+    },
+    register() { throw new Error('Créez votre compte depuis alpes-ex.fr.'); },
+    forgotPassword() { if (window.cpmpNative) window.cpmpNative.openAccount(); else window.open('/compte/', '_blank', 'noopener'); return Promise.resolve({ message: 'Utilisez « Mot de passe oublié » sur alpes-ex.fr.' }); },
+    changePassword() { throw new Error('Modifiez votre mot de passe depuis alpes-ex.fr.'); },
+    verifyPassword(password) { return request(API + '?action=verify-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) }); },
+    async session() { return currentSession; },
+    async logout() {
+      await request(API + '?action=device-disconnect', { method: 'POST' }).catch(() => null);
+      await request(AUTH + 'logout/', { method: 'POST' }).catch(() => null);
+      currentSession = null; projectCache = [];
+      localStorage.removeItem('pcasm_pro_projects');
+      localStorage.removeItem(revisionKey);
+      localStorage.removeItem('alpesex.application.drafts');
+      // The licence and stable account/device identity belong to this installation,
+      // not to the short-lived authenticated session.
+      return true;
+    }
+  };
+
+  const queue = new window.CpmpSyncQueue(localStorage,
+    (project, revision) => request(API + '?action=project-save', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({project, revision})}),
+    (localId, project, result) => {
+      saveRevision(localId, result.revision);
+      projectCache = projectCache.filter(item => item.localId !== localId);
+      projectCache.push({id:result.id, localId:result.localId || localId, revision:result.revision, access:result.access, data:project, ownerEmail:currentSession?.email || ''});
+    });
+  window.erpAsmProjects = {
+    drafts() { return queue.entries(); },
+    stage(project) { queue.stage(project, revisions()[project.meta.portfolioId] ?? 0); },
+    flush(id) { return queue.flush(id); },
+    discardDraft(id) { queue.remove(id); },
+    async list() { return { projects: await projects() }; },
+    acceptSnapshot(items) { items.forEach(item => saveRevision(item.localId, item.revision)); },
+    async remove(project) {
+      const localId = String(project?.meta?.portfolioId || '');
+      if (queue.running.has(localId)) await queue.flush(localId);
+      await projects();
+      let item = projectCache.find(item => item.id === project?.meta?.cloudId || item.localId === localId);
+      if (!item && !project?.meta?.cloudId) { queue.remove(localId); return { ok: true }; }
+      const removeCurrent = current => request(API + '?action=project-delete', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({projectId:current?.id || project.meta.cloudId, revision:current?.revision ?? revisions()[localId]})
+      });
+      let result;
+      try {
+        result = await removeCurrent(item);
+      } catch (error) {
+        if (error.code !== 'PROJECT_CONFLICT') throw error;
+        await projects();
+        item = projectCache.find(item => item.id === project?.meta?.cloudId || item.localId === localId);
+        if (!item) return {ok:true};
+        result = await removeCurrent(item);
+      }
+      queue.remove(localId);
+      projectCache = projectCache.filter(cached => cached.id !== item?.id && cached.localId !== localId);
+      const all = revisions(); delete all[localId]; localStorage.setItem(revisionKey, JSON.stringify(all));
+      return result;
+    },
+    async save(project) {
+      const localId = String(project?.meta?.portfolioId || '');
+      queue.stage(project, revisions()[localId] ?? 0);
+      return queue.flush(localId);
+    }
+  };
+
+  window.erpAsmDocuments = {
+    async state() { return { configured: true, host: 'Cloud ALPES’Ex', connected: navigator.onLine }; },
+    async ensureProject(payload) { const item = await cloudProject(payload.project); return { id: item.id }; },
+    async status(payload) {
+      const item = await cloudProject(payload.project);
+      return request(API + '?action=documents-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId: item.id, documents: payload.documents }) });
+    },
+    async upload(payload) {
+      const item = await cloudProject(payload.project);
+      const file = await new Promise(resolve => {
+        const input = document.createElement('input'); input.type = 'file'; input.style.display = 'none';
+        input.oncancel = () => { input.remove(); resolve(null); };
+        input.onchange = () => { const selected = input.files?.[0] || null; input.remove(); resolve(selected); };
+        document.body.appendChild(input); input.click();
+      });
+      if (!file) return { canceled: true };
+      if (file.size > 1024 * 1024) throw new Error('Le document dépasse la limite de 1 Mo.');
+      const form = new FormData(); form.append('projectId', item.id); form.append('ref', payload.document.ref); form.append('family', payload.document.family || ''); form.append('file', file);
+      return request(API + '?action=document-upload', { method: 'POST', body: form });
+    },
+    async open(payload) {
+      const item = await cloudProject(payload.project);
+      const url = API + '?action=document-open&projectId=' + encodeURIComponent(item.id) + '&ref=' + encodeURIComponent(payload.document.ref);
+      if (window.cpmpNative) await window.cpmpNative.openDocument(url, payload.document.fileName || payload.document.ref);
+      else window.open(url, '_blank', 'noopener');
+      return { ok: true };
+    }
+  };
+
+  window.erpAsmBackups = {
+    async list() {
+      const list = await projects();
+      return { backups: list.map(item => ({ id: item.id, name: 'Sauvegarde_' + item.name, manager: item.ownerEmail, category: 'Projet Cloud', project: item.name, modifiedAt: item.updatedAt })) };
+    },
+    async load(id) {
+      const item = (await projects()).find(project => project.id === id);
+      if (!item) throw new Error('Sauvegarde introuvable.');
+      saveRevision(item.localId, item.revision);
+      return { data: item.data };
+    },
+    async save(payload) {
+      // Project publication already persists the central snapshot. Do not write it twice.
+      return { ok: true };
+    }
+  };
+
+  if (!window.cpmpNative && 'serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/application/service-worker.js').catch(() => null));
+})();

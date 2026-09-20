@@ -1,0 +1,16 @@
+ALTER TABLE organizations
+    ADD COLUMN trade_name VARCHAR(190) NULL AFTER name,
+    ADD COLUMN legal_form VARCHAR(100) NOT NULL AFTER trade_name,
+    ADD COLUMN country VARCHAR(100) NOT NULL AFTER legal_form,
+    ADD COLUMN siren VARCHAR(9) NULL AFTER country,
+    ADD COLUMN siret VARCHAR(14) NULL AFTER siren,
+    ADD COLUMN vat_number VARCHAR(20) NULL AFTER siret,
+    ADD COLUMN billing_address_1 VARCHAR(180) NOT NULL AFTER vat_number,
+    ADD COLUMN billing_address_2 VARCHAR(150) NULL AFTER billing_address_1,
+    ADD COLUMN postal_code VARCHAR(12) NOT NULL AFTER billing_address_2,
+    ADD COLUMN city VARCHAR(100) NOT NULL AFTER postal_code,
+    ADD COLUMN billing_email VARCHAR(254) NOT NULL AFTER city,
+    ADD COLUMN invoice_platform VARCHAR(150) NULL AFTER billing_email,
+    ADD COLUMN terms_accepted_at DATETIME NOT NULL AFTER invoice_platform,
+    ADD UNIQUE KEY uq_organizations_siret (siret),
+    ADD INDEX idx_organizations_siren (siren);

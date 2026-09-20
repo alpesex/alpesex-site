@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS organization_invitations (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    organization_id BIGINT UNSIGNED NOT NULL,
+    invited_by_user_id BIGINT UNSIGNED NOT NULL,
+    email VARCHAR(254) NOT NULL,
+    first_name VARCHAR(100) NULL,
+    last_name VARCHAR(100) NULL,
+    intended_license VARCHAR(32) NOT NULL DEFAULT 'user',
+    token_hash CHAR(64) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    accepted_at DATETIME NULL,
+    revoked_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_organization_invitations_token (token_hash),
+    INDEX idx_invitations_organization (organization_id, created_at),
+    INDEX idx_invitations_email (email, accepted_at, revoked_at),
+    CONSTRAINT fk_invitations_organization FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE,
+    CONSTRAINT fk_invitations_user FOREIGN KEY (invited_by_user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

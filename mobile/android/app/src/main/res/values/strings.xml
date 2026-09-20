@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CPMP ASM</string>
+    <string name="title_activity_main">CPMP ASM</string>
+    <string name="package_name">fr.alpesex.cpmpasm</string>
+    <string name="custom_url_scheme">fr.alpesex.cpmpasm</string>
+</resources>

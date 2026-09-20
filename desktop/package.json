@@ -1,0 +1,24 @@
+{
+  "name": "cpmp-asm-windows",
+  "version": "6.0.0",
+  "private": true,
+  "description": "CPMP ASM V6.0.0 — Windows et Cloud ALPES'Ex",
+  "author": "ALPES'Ex",
+  "main": "main.cjs",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder --win nsis --x64 --publish never",
+    "smoke": "npm run build && electron . --smoke-test"
+  },
+  "devDependencies": {"electron": "44.4.3", "electron-builder": "26.15.3"},
+  "build": {
+    "appId": "fr.alpesex.cpmpasm",
+    "productName": "CPMP ASM",
+    "asar": true,
+    "files": ["main.cjs", "preload.cjs", "legacy-reader.html", "www/**/*", "package.json"],
+    "win": {"target": "nsis", "icon": "../assets/favicon.ico", "signAndEditExecutable": true},
+    "nsis": {"oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": false, "installerIcon": "../assets/favicon.ico", "uninstallerIcon": "../assets/favicon.ico", "createDesktopShortcut": true, "createStartMenuShortcut": true},
+    "artifactName": "CPMP-ASM-Setup-V6.0.0-x64.${ext}"
+  }
+}
