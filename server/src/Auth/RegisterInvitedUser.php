@@ -44,6 +44,8 @@ final class RegisterInvitedUser
                 throw new RuntimeException('Cette invitation est invalide, expirée ou ne correspond pas à cette adresse.');
             }
 
+            $lock = $this->pdo->prepare('SELECT id FROM organizations WHERE id=? FOR UPDATE');
+            $lock->execute([$invitation['organization_id']]);
             $user = $this->pdo->prepare(
                 'INSERT INTO users
                  (organization_id, team_manager_id, email, password_hash, first_name, last_name, role, status, email_verified_at)
@@ -51,15 +53,17 @@ final class RegisterInvitedUser
             );
             $user->execute([
                 'organization_id' => $invitation['organization_id'],
-                'team_manager_id' => $invitation['intended_license'] === 'user' ? $invitation['invited_by_user_id'] : null,
+                'team_manager_id' => $invitation['invited_by_user_id'],
                 'email' => $email,
                 'password_hash' => password_hash($password, PASSWORD_DEFAULT),
                 'first_name' => $invitation['first_name'] ?: 'Utilisateur',
                 'last_name' => $invitation['last_name'] ?: 'Invité',
-                'role' => in_array($invitation['intended_license'], ['user', 'manager', 'direction'], true)
-                    ? $invitation['intended_license'] : 'user',
+                // Licence roles never grant administrative rights on the customer portal.
+                'role' => 'user',
                 'status' => 'active',
             ]);
+            require_once dirname(__DIR__) . '/Team/ManagerLicenses.php';
+            \AlpesEx\Portal\Team\ManagerLicenses::acceptReservation($this->pdo, (int)$invitation['organization_id'], (int)$this->pdo->lastInsertId(), $email);
             $accepted = $this->pdo->prepare('UPDATE organization_invitations SET accepted_at = UTC_TIMESTAMP() WHERE id = :id');
             $accepted->execute(['id' => $invitation['id']]);
             $this->pdo->commit();
