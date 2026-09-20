@@ -64,10 +64,16 @@ with tempfile.TemporaryDirectory(prefix='cpmp-api-test-') as directory:
             status, saved = call('project-save', {'project': project, 'revision': 0})
             assert status == 200 and saved['revision'] == 1, (status, saved)
             project_id = saved['id']
+            project['meta']['cloudId'] = project_id
             attempts = parallel([lambda: call('project-save', {'project': project, 'revision': 1}, copy=1),
                                  lambda: call('project-save', {'project': project, 'revision': 1}, copy=2)])
             assert sorted(x[0] for x in attempts) == [200, 409], attempts
             assert call('project-save', {'project': project, 'revision': 2}, user=3)[0] == 403
+            renamed = {'meta': {'portfolioId': 'changed-local-id', 'cloudId': project_id, 'nomProjet': 'Shared project'}, 'todo': []}
+            status, renamed_saved = call('project-save', {'project': renamed, 'revision': 2})
+            assert status == 200 and renamed_saved['id'] == project_id and renamed_saved['revision'] == 3, (status, renamed_saved)
+            status, current_projects = call('projects')
+            assert status == 200 and len(current_projects['projects']) == 1 and current_projects['projects'][0]['localId'] == 'changed-local-id'
             status, manager = call('projects', user=2)
             assert status == 200 and manager['projects'][0]['access'] == 'editor'
             assert call('projects', user=4) == (200, {'projects': []})
@@ -80,17 +86,26 @@ with tempfile.TemporaryDirectory(prefix='cpmp-api-test-') as directory:
             assert b'version' not in files[0].read_bytes(), 'Document must be encrypted at rest'
             assert upload(project_id, b'x' * (1024 * 1024 + 1))[0] == 413
             assert call('project-delete', {'projectId': project_id, 'revision': 1})[0] == 409
-            assert call('project-delete', {'projectId': project_id, 'revision': 2}, user=3)[0] == 403
-            assert call('project-delete', {'projectId': project_id, 'revision': 2}) == (200, {'ok': True, 'cleanupPending': 0})
+            assert call('project-delete', {'projectId': project_id, 'revision': 3}, user=3)[0] == 403
+            assert call('project-delete', {'projectId': project_id, 'revision': 3}) == (200, {'ok': True, 'cleanupPending': 0})
             assert call('projects') == (200, {'projects': []})
-            assert call('project-save', {'project': project, 'revision': 2})[0] == 410
+            assert call('project-save', {'project': project, 'revision': 3})[0] == 410
             assert call('document-open&projectId=' + project_id + '&ref=DOC-1')[0] == 404
             assert not list((temp / 'storage/documents/1').iterdir())
+            # The tombstone remains authoritative and cannot be recreated under an alias.
+            assert call('project-save', {'project': renamed, 'revision': 3})[0] == 410
+            # Another recently active device blocks simultaneous use and reveals its display name.
+            busy_device = hashlib.sha256(b'busy-device').hexdigest()
+            busy = call('activate', {'licenseToken': 'test-license-1', 'deviceIdentifier': busy_device,
+                'deviceName': 'TABLETTE-ATELIER', 'platform': 'android'}, copy=4)
+            assert busy[0] == 409 and busy[1] == {'error': 'DEVICE_ALREADY_CONNECTED', 'deviceName': 'Test'}, busy
+            assert call('device-disconnect', {}, copy=1) == (200, {'ok': True})
             activations = parallel([lambda i=i: call('activate', {'licenseToken': 'test-license-1',
                 'deviceIdentifier': hashlib.sha256(f'new-device-{i}'.encode()).hexdigest(),
                 'deviceName': 'Test concurrent', 'platform': 'android'}, copy=i) for i in range(1, 5)])
-            assert sorted(x[0] for x in activations) == [200, 200, 403, 403], activations
-            print('PASS: concurrent edits, licence roles, organization isolation, encrypted document replacement, size limit, deletion tombstones, three-device limit')
+            assert sorted(x[0] for x in activations) == [200, 409, 409, 409], activations
+            assert all(x[1].get('deviceName') == 'Test concurrent' for x in activations if x[0] == 409), activations
+            print('PASS: concurrent edits, licence roles, organization isolation, encrypted document replacement, size limit, deletion tombstones, single active device')
         except BaseException:
             log.flush()
             log.seek(0)

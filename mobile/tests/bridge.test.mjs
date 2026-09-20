@@ -28,10 +28,24 @@ test('a server conflict is surfaced and does not advance the revision', async ()
   assert.equal(JSON.parse(x.data.get('alpesex.application.revisions')).p, 1);
 });
 test('logout clears account data even when the server is unavailable', async () => {
-  const x = setup([{ok:false,body:{}}], {'pcasm_pro_projects':'private','alpesex.application.revisions':'{}','alpesex.application.license':'secret','alpesex.application.account':'1:2','alpesex.application.device':'stable'});
+  const x = setup([{ok:false,body:{}},{ok:false,body:{}}], {'pcasm_pro_projects':'private','alpesex.application.revisions':'{}','alpesex.application.license':'secret','alpesex.application.account':'1:2','alpesex.application.device':'stable'});
   await x.window.erpAsmAuth.logout();
   assert.equal(x.data.size, 1);
   assert.equal(x.data.get('alpesex.application.device'), 'stable');
+});
+test('a second connected device receives the active device name', async () => {
+  const x = setup([{body:{}},{ok:false,body:{error:'DEVICE_ALREADY_CONNECTED',deviceName:'POSTE-LUCAS'}}]);
+  await assert.rejects(
+    x.window.erpAsmAuth.login({email:'test@example.test',password:'unused',licenseToken:'token'}),
+    /Un autre appareil est déjà connecté : POSTE-LUCAS/
+  );
+});
+test('saving keeps one Cloud row when the local alias changed', async () => {
+  const x = setup([{body:{id:'cloud-id',localId:'changed-alias',revision:4,access:'editor'}}]);
+  x.window.erpAsmProjects.acceptSnapshot([{localId:'changed-alias',revision:3}]);
+  const saved = await x.window.erpAsmProjects.save({meta:{portfolioId:'changed-alias',cloudId:'cloud-id'}});
+  assert.equal(JSON.parse(x.data.get('alpesex.application.revisions'))['changed-alias'], 4);
+  assert.equal(saved.localId, 'changed-alias');
 });
 test('new account never inherits the previous local project portfolio', async () => {
   const x = setup([{body:{}},{body:{user:{organizationId:2,id:3,email:'new@example.test',role:'user'},activation:{role:'user'}}}], {'pcasm_pro_projects':'private','alpesex.application.account':'1:1'});

@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 use AlpesEx\Portal\Application\ApplicationAccess;
 use AlpesEx\Portal\Application\ApplicationCipher;
+use AlpesEx\Portal\Application\DeviceAlreadyConnectedException;
 use AlpesEx\Portal\Database;
 
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 
-function appFail(int $status, string $error): never
+function appFail(int $status, string $error, array $details = []): never
 {
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(['error' => $error], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['error' => $error] + $details, JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -78,11 +79,18 @@ try {
         exit;
     }
 
-    if (!in_array($action, ['devices', 'device-revoke'], true)) {
+    if (!in_array($action, ['devices', 'device-revoke', 'device-disconnect'], true)) {
         if (!isset($_SESSION['application_license_id'], $_SESSION['application_device'])) {
             appFail(401, 'LICENSE_ACTIVATION_REQUIRED');
         }
         $user['role'] = $access->assertActiveDevice($user);
+    }
+
+    if ($action === 'device-disconnect' && $method === 'POST') {
+        $access->disconnectDevice($user);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => true], JSON_UNESCAPED_UNICODE);
+        exit;
     }
 
     if ($action === 'verify-password' && $method === 'POST') {
@@ -181,15 +189,19 @@ try {
         $input = appJson();
         $project = $input['project'] ?? null;
         $localId = trim((string) ($project['meta']['portfolioId'] ?? ''));
+        $cloudId = strtolower(trim((string) ($project['meta']['cloudId'] ?? '')));
         $name = trim((string) ($project['meta']['nomProjet'] ?? 'Projet CPMP - ASM'));
         if (!is_array($project) || $localId === '' || strlen($localId) > 120 || strlen($name) > 190) {
             appFail(422, 'PROJECT_INVALID');
         }
+        $hasCloudId = preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/', $cloudId) === 1;
         $existing = $pdo->prepare(
             'SELECT p.*,u.team_manager_id FROM application_projects p INNER JOIN users u ON u.id=p.owner_user_id
-             WHERE p.organization_id=:organization_id AND p.local_id=:local_id LIMIT 1'
+             WHERE p.organization_id=:organization_id AND ' . ($hasCloudId ? 'p.id=:project_id' : 'p.local_id=:local_id') . ' LIMIT 1'
         );
-        $existing->execute(['organization_id' => $user['organizationId'], 'local_id' => $localId]);
+        $existing->execute($hasCloudId
+            ? ['organization_id' => $user['organizationId'], 'project_id' => $cloudId]
+            : ['organization_id' => $user['organizationId'], 'local_id' => $localId]);
         $row = $existing->fetch();
         if (is_array($row) && $row['deleted_at'] !== null) {
             appFail(410, 'PROJECT_DELETED');
@@ -221,17 +233,17 @@ try {
             $id = (string) $row['id'];
             $encoded = $cipher->encrypt($plain, 'project:' . $id);
             $update = $pdo->prepare(
-                'UPDATE application_projects SET name=:name,project_data=:project_data,revision=revision+1
+                'UPDATE application_projects SET local_id=:local_id,name=:name,project_data=:project_data,revision=revision+1
                  WHERE id=:id AND revision=:revision AND deleted_at IS NULL'
             );
-            $update->execute(['name' => $name, 'project_data' => $encoded, 'id' => $id, 'revision' => $expected]);
+            $update->execute(['local_id' => $localId, 'name' => $name, 'project_data' => $encoded, 'id' => $id, 'revision' => $expected]);
             if ($update->rowCount() !== 1) {
                 appFail(409, 'PROJECT_CONFLICT');
             }
             $revision = $expected + 1;
         }
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['id' => $id, 'revision' => $revision, 'access' => 'editor'], JSON_UNESCAPED_UNICODE);
+        echo json_encode(['id' => $id, 'localId' => $localId, 'revision' => $revision, 'access' => 'editor'], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
@@ -377,6 +389,9 @@ try {
     if (isset($newUploadPath)) @unlink($newUploadPath);
     appFail(($exception->errorInfo[1] ?? 0) === 1062 ? 409 : 503,
         ($exception->errorInfo[1] ?? 0) === 1062 ? 'PROJECT_CONFLICT' : 'APPLICATION_UNAVAILABLE');
+} catch (DeviceAlreadyConnectedException $exception) {
+    if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
+    appFail(409, 'DEVICE_ALREADY_CONNECTED', ['deviceName' => $exception->deviceName]);
 } catch (RuntimeException $exception) {
     if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
     if (isset($newUploadPath)) @unlink($newUploadPath);

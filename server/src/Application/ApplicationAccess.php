@@ -7,6 +7,14 @@ namespace AlpesEx\Portal\Application;
 use PDO;
 use RuntimeException;
 
+final class DeviceAlreadyConnectedException extends RuntimeException
+{
+    public function __construct(public readonly string $deviceName)
+    {
+        parent::__construct('DEVICE_ALREADY_CONNECTED', 409);
+    }
+}
+
 final class ApplicationAccess
 {
     public function __construct(private readonly PDO $pdo)
@@ -91,6 +99,17 @@ final class ApplicationAccess
             if (is_array($device) && $device['status'] === 'revoked') {
                 throw new RuntimeException('DEVICE_REVOKED', 403);
             }
+            $connected = $this->pdo->prepare(
+                "SELECT device_name FROM application_devices
+                 WHERE license_registry_id=:license_id AND device_identifier<>:device_identifier
+                   AND status='active' AND last_seen_at>=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 20 SECOND)
+                 ORDER BY last_seen_at DESC LIMIT 1 FOR UPDATE"
+            );
+            $connected->execute(['license_id' => $row['id'], 'device_identifier' => $deviceIdentifier]);
+            $connectedName = $connected->fetchColumn();
+            if (is_string($connectedName) && trim($connectedName) !== '') {
+                throw new DeviceAlreadyConnectedException(trim($connectedName));
+            }
             if (!is_array($device)) {
                 $count = $this->pdo->prepare("SELECT COUNT(*) FROM application_devices WHERE license_registry_id=:license_id AND status='active'");
                 $count->execute(['license_id' => $row['id']]);
@@ -119,6 +138,28 @@ final class ApplicationAccess
         $_SESSION['application_license_id'] = (int) $row['id'];
         $_SESSION['application_device'] = $deviceIdentifier;
         return ['role' => (string) ($row['license_role'] ?: $user['role']), 'maxDevices' => 3];
+    }
+
+    /** @param array{id:int,organizationId:int} $user */
+    public function disconnectDevice(array $user): void
+    {
+        $licenseId = filter_var($_SESSION['application_license_id'] ?? null, FILTER_VALIDATE_INT);
+        $deviceIdentifier = strtolower((string) ($_SESSION['application_device'] ?? ''));
+        if (!$licenseId || !preg_match('/^[a-f0-9]{64}$/', $deviceIdentifier)) {
+            return;
+        }
+        $statement = $this->pdo->prepare(
+            "UPDATE application_devices SET last_seen_at=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 MINUTE)
+             WHERE license_registry_id=:license_id AND device_identifier=:device_identifier
+               AND user_id=:user_id AND organization_id=:organization_id"
+        );
+        $statement->execute([
+            'license_id' => $licenseId,
+            'device_identifier' => $deviceIdentifier,
+            'user_id' => $user['id'],
+            'organization_id' => $user['organizationId'],
+        ]);
+        unset($_SESSION['application_license_id'], $_SESSION['application_device']);
     }
 
     /** @param array{id:int,organizationId:int} $user */

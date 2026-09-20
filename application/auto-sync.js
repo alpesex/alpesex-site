@@ -35,6 +35,11 @@
       if (!item.data?.meta) continue;
       const p = normalizeProject(item.data);
       Object.assign(p.meta, {portfolioId:item.localId, cloudId:item.id, cloudAccess:item.access, ownerEmail:item.ownerEmail || ''});
+      // The Cloud UUID is the durable identity. Remove a stale local alias before
+      // inserting the current snapshot so one project never appears twice.
+      for (const [localId, localProject] of merged) {
+        if (localId !== item.localId && localProject?.meta?.cloudId === item.id) merged.delete(localId);
+      }
       merged.set(item.localId, p);
       if (!drafts[item.localId]) { accepted.push(item); baseline.set(item.localId, fingerprint(p)); }
     }
