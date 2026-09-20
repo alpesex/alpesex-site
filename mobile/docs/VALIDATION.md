@@ -4,7 +4,7 @@
 
 - Dépôt : `alpesex/alpesex-site`, PR #11, branche `agent/mobile-tablet-complete`.
 - Base auditée : `96e9f67888ee3b420c18998279161cc365018174`.
-- Installeur utilisateur : `CPMP-ASM-Setup-V5.4.18-x64-FINAL.exe`.
+- Installeur utilisateur : `CPMP-ASM-Setup-V6.0.0-x64.exe`.
 - SHA-256 : `87a5b09a5aca1bd166be043176dd8fa8cdaf51e0bf1f668c1d9f72440b4c4453`.
 - L'installeur restaure un socle 5.4.10 puis remplace app.asar par la V5.4.18.
   Le dernier app.asar a été extrait du bloc NSIS de remplacement, sans exécuter l'EXE.
@@ -20,7 +20,7 @@
 
 - Projets Capacitor iOS/iPadOS et Android générés avec interface embarquée.
 - API native HTTPS, ouverture documentaire et export JSON par partage natif.
-- Versions natives 5.4.18, identifiant provisoire `fr.alpesex.cpmpasm`.
+- Versions natives 6.0.0, identifiant `fr.alpesex.cpmpasm`.
 - Manifeste de confidentialité pour l'API de dates de fichiers.
 - Suppression de l’appel hérité à `ensurePassword`, inexistant, qui bloquait le démarrage.
 - Bouton retour Android raccordé au portefeuille avec confirmation en édition.

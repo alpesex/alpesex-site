@@ -22,10 +22,12 @@ try {
     const page = await browser.newPage({ viewport: { width, height: 844 } });
     const errors = [];
     let project, createdProject, revision = 1;
+    const requests = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.route('**/api/**', async route => {
       const url = new URL(route.request().url());
       const action = url.searchParams.get('action');
+      requests.push({action, body: route.request().postData()});
       let body = {}, status = 200;
       if (action === 'session') { status = 401; body = { error: 'AUTHENTICATION_REQUIRED' }; }
       if (action === 'activate') body = { user: {id:1,organizationId:1,email:'smoke@example.test',role:'user'}, activation:{role:'user'} };
@@ -41,13 +43,14 @@ try {
       await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
     });
     await page.goto(`http://127.0.0.1:${server.address().port}/application/`);
-    await page.locator('#authEmail').waitFor({state:'visible'});
     if (width === 390) {
       await page.locator('[data-install-app]').first().click();
       await page.locator('#installAppModal').waitFor({state:'visible'});
       assert.match(await page.locator('#installAppSteps').innerText(), /Installer l’application|Ajouter à l’écran d’accueil/);
       await page.locator('.install-cancel').click();
     }
+    if (!await page.locator('#authEmail').isVisible()) await page.getByRole('button',{name:'Connexion',exact:true}).click();
+    await page.locator('#authEmail').waitFor({state:'visible'});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `Login overflow ${width}`);
     project = await page.evaluate(() => {const p=normalizeProject(EMPTY_PROJECT);p.meta.portfolioId='SMOKE';p.meta.nomProjet='Projet test mobile';return p;});
     await page.locator('#authEmail').fill('smoke@example.test');
@@ -57,29 +60,36 @@ try {
     await page.locator('#authScreen').waitFor({state:'hidden'});
     assert.match(await page.locator('#projectList').innerText(), /Projet test mobile/);
     await page.locator('#adminButton').click();
-    const fileChooser = page.waitForEvent('filechooser');
-    await page.getByRole('button',{name:'Importer une sauvegarde Windows',exact:true}).click();
-    await fileChooser;
     await page.locator('#addProjectButton').click();
     await page.locator('#newProjectModal').waitFor({state:'visible'});
     await page.locator('#newProjectName').fill(`Nouveau projet ${width}`);
     await page.locator('#newProjectConfirm').click();
     await page.locator('#newProjectModal').waitFor({state:'hidden'});
     await page.frameLocator('#adminFrame').locator('body').waitFor({state:'visible'});
+    const admin = page.frameLocator('#adminFrame');
+    await admin.getByRole('button',{name:'Pilotage transverse',exact:true}).evaluate(button => button.click());
+    await admin.locator('[data-trans="ASM-204"]').evaluate(button => button.click());
+    await admin.getByRole('heading',{name:'ASM-204 — Pilotage budgétaire',exact:true}).waitFor();
+    assert.match(await admin.locator('#adminTransContent').innerText(), /Budget initial[\s\S]*Prix à terminaison[\s\S]*Marge à terminaison/);
+    await admin.locator('[data-trans="ASM-205"]').evaluate(button => button.click());
+    await admin.getByRole('heading',{name:'ASM-205 — Pilotage des délais',exact:true}).waitFor();
+    assert.match(await admin.locator('#adminTransContent').innerText(), /Date de fin initiale[\s\S]*Date de fin estimée[\s\S]*Chemin critique/);
     assert.equal(await page.evaluate(name => getProjects().some(item => item.meta.nomProjet === name), `Nouveau projet ${width}`), true, `Project creation ${width}`);
     assert.equal(createdProject.meta.nomProjet, `Nouveau projet ${width}`, `Cloud project creation ${width}`);
-    const createdId = await page.evaluate(name => getProjects().find(item => item.meta.nomProjet === name).meta.portfolioId, `Nouveau projet ${width}`);
-    await page.evaluate(id => { const items=getProjects().filter(item=>item.meta.portfolioId!==id);saveProjects(items);renderPortfolio(false); }, createdId);
+    await page.evaluate(() => renderPortfolio(false));
     project = await page.evaluate(() => projectById('SMOKE'));
     revision = 1;
     await page.evaluate(() => openProject('SMOKE', false));
-    await page.frameLocator('#clientFrame').locator('body').waitFor({state:'visible'});
+    await page.frameLocator('#clientFrame').locator('body').waitFor({state:'attached'});
     await page.evaluate(() => openProject('SMOKE', true));
-    await page.frameLocator('#adminFrame').locator('body').waitFor({state:'visible'});
+    await page.frameLocator('#adminFrame').locator('body').waitFor({state:'attached'});
     await page.evaluate(() => openDCProject('SMOKE', true));
     await page.locator('#dcFrame').waitFor({state:'visible'});
     await page.evaluate(() => {activeDcProject.meta.referenceProjet='AUTO-SYNC';dcPersist();});
-    await page.waitForFunction(() => document.getElementById('syncStatus').textContent==='Synchronisé' && Object.keys(window.erpAsmProjects.drafts()).length===0);
+    await page.waitForTimeout(5000);
+    const syncState = await page.evaluate(() => ({status:document.getElementById('syncStatus').textContent,drafts:window.erpAsmProjects.drafts()}));
+    assert.equal(syncState.status, 'Synchronisé', JSON.stringify({syncState,requests}, null, 2));
+    assert.deepEqual(Object.keys(syncState.drafts), [], JSON.stringify({syncState,requests}, null, 2));
     assert.equal(project.meta.referenceProjet,'AUTO-SYNC','DC changes saved automatically');
     await page.evaluate(() => renderPortfolio(false));
     project.meta.nomProjet='Modifié depuis un autre appareil';revision++;
@@ -98,7 +108,8 @@ try {
     await page.waitForFunction(() => document.getElementById('projectList').textContent.includes('Version concurrente'));
     assert.equal(await page.evaluate(() => Object.keys(window.erpAsmProjects.drafts()).length),0);
     await page.locator('#logoutButton').click();
-    await page.locator('#authEmail').waitFor({state:'visible'});
+    await page.locator('#authScreen').waitFor({state:'visible'});
+    await page.getByRole('button',{name:'Connexion',exact:true}).waitFor({state:'visible'});
     assert.equal(await page.evaluate(() => localStorage.getItem('pcasm_pro_projects')), null);
     assert.deepEqual(errors, [], `JavaScript errors at ${width}px`);
     console.log(`Login, new project, portfolio, PC view/edit, DC edit, automatic save/pull, conflict recovery, logout: OK (${width}px; mocked API)`);

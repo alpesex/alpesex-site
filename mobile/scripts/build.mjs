@@ -12,4 +12,4 @@ let html = await readFile(resolve(out, 'application/index.html'), 'utf8');
 html = html.replace('<script src="/application/mobile-bridge.js">', '<script src="/native.js"></script>\n<script src="/application/mobile-bridge.js">');
 await writeFile(resolve(out, 'index.html'), html);
 await build({ entryPoints: [resolve(root, 'src/native.js')], outfile: resolve(out, 'native.js'), bundle: true, format: 'iife', target: ['safari15', 'chrome100'] });
-console.log('Interface CPMP V5.4.18 embarquée et passerelle native compilée.');
+console.log('Interface CPMP V6.0.0 embarquée et passerelle native compilée.');
