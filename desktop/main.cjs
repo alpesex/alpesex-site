@@ -7,7 +7,6 @@ const smoke = process.argv.includes('--smoke-test');
 app.setPath('userData', path.join(app.getPath('appData'), 'cpmp-asm'));
 let win, legacyProjectsJson = null;
 async function readLegacyProjects(ses) {
-  if (smoke) return null;
   const reader = new BrowserWindow({show:false,webPreferences:{session:ses,sandbox:true,contextIsolation:true,nodeIntegration:false}});
   try {
     await reader.loadFile(path.join(__dirname, 'legacy-reader.html'));
@@ -83,4 +82,6 @@ app.whenReady().then(async () => {
     app.exit(0);
   }
 }).catch(error => {console.error(error);app.exit(1);});
-app.on('window-all-closed', () => app.quit());
+// Destroying the temporary legacy reader must not quit the application before
+// the main window has been created.
+app.on('window-all-closed', () => { if (win) app.quit(); });
