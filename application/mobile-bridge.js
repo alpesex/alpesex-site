@@ -76,9 +76,80 @@
     localStorage.setItem(revisionKey, JSON.stringify(all));
   }
 
+  function projectReference(item) {
+    return String(item?.data?.meta?.referenceProjet || '').trim().toUpperCase().replace(/\s+/g, ' ');
+  }
+
+  function isFresher(left, right) {
+    const leftScore = [
+      left.hasDocuments ? 1 : 0,
+      String(left?.data?.meta?.derniereMiseAJour || ''),
+      String(left.updatedAt || ''),
+      Number(left.revision || 0)
+    ];
+    const rightScore = [
+      right.hasDocuments ? 1 : 0,
+      String(right?.data?.meta?.derniereMiseAJour || ''),
+      String(right.updatedAt || ''),
+      Number(right.revision || 0)
+    ];
+    return leftScore.join('|') > rightScore.join('|');
+  }
+
+  function clearProjectState(localIds) {
+    const all = revisions();
+    for (const localId of localIds) {
+      delete all[localId];
+      queue.remove(localId);
+    }
+    localStorage.setItem(revisionKey, JSON.stringify(all));
+  }
+
   async function projects() {
     const result = await request(API + '?action=projects');
-    projectCache = result.projects || [];
+    const raw = result.projects || [];
+    const groups = new Map();
+    const standalone = [];
+    for (const item of raw) {
+      const reference = projectReference(item);
+      if (!reference) {
+        standalone.push(item);
+        continue;
+      }
+      const key = String(item.ownerEmail || '') + '|' + reference;
+      const group = groups.get(key) || [];
+      group.push(item);
+      groups.set(key, group);
+    }
+    const cleaned = [...standalone];
+    for (const group of groups.values()) {
+      if (group.length === 1) {
+        cleaned.push(group[0]);
+        continue;
+      }
+      const canonical = group.reduce((best, item) => isFresher(item, best) ? item : best);
+      const duplicates = group.filter(item => item.id !== canonical.id);
+      // A duplicate containing documents is never removed automatically.
+      if (duplicates.some(item => item.hasDocuments)) {
+        cleaned.push(...group);
+        continue;
+      }
+      try {
+        const pruned = await request(API + '?action=project-prune', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({canonicalId: canonical.id, duplicateIds: duplicates.map(item => item.id)})
+        });
+        const removed = new Set(pruned.deletedIds || []);
+        const removedLocalIds = duplicates.filter(item => removed.has(item.id)).map(item => item.localId);
+        clearProjectState(removedLocalIds);
+        cleaned.push(canonical, ...duplicates.filter(item => !removed.has(item.id)));
+      } catch (_) {
+        // Never hide a row if the server could not safely remove it.
+        cleaned.push(...group);
+      }
+    }
+    projectCache = cleaned.sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')));
     // Revisions belong to the loaded snapshot, never to a background listing.
     return projectCache;
   }
@@ -101,7 +172,7 @@
         currentSession = result.user;
         return { configured: true, online: true, needsLicense: false, email: result.user.email, licenseEmail: claims(token).email || result.user.email, licenseToken: token, rememberMe: true };
       } catch (_) {
-        return { configured: false, online: navigator.onLine, needsLicense: true, email: claims(token).email || '', licenseEmail: claims(token).email || '', licenseToken: token, rememberMe: true };
+        return { configured: false, online: navigator.onLine, needsLicense: !token, email: claims(token).email || '', licenseEmail: claims(token).email || '', licenseToken: token, rememberMe: true };
       }
     },
     async login(payload) {
@@ -144,8 +215,8 @@
       localStorage.removeItem('pcasm_pro_projects');
       localStorage.removeItem(revisionKey);
       localStorage.removeItem('alpesex.application.drafts');
-      localStorage.removeItem(licenseKey);
-      localStorage.removeItem('alpesex.application.account');
+      // The licence and stable account/device identity belong to this installation,
+      // not to the short-lived authenticated session.
       return true;
     }
   };
@@ -166,13 +237,27 @@
     acceptSnapshot(items) { items.forEach(item => saveRevision(item.localId, item.revision)); },
     async remove(project) {
       const localId = String(project?.meta?.portfolioId || '');
-      let item = projectCache.find(item => item.localId === localId);
       if (queue.running.has(localId)) await queue.flush(localId);
-      if (!item && !project?.meta?.cloudId && !projectCache.some(x=>x.localId===localId)) { queue.remove(localId); return { ok: true }; }
-      item = projectCache.find(item => item.localId === localId);
-      const result = await request(API + '?action=project-delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({projectId:item?.id || project.meta.cloudId, revision:revisions()[localId]})});
+      await projects();
+      let item = projectCache.find(item => item.id === project?.meta?.cloudId || item.localId === localId);
+      if (!item && !project?.meta?.cloudId) { queue.remove(localId); return { ok: true }; }
+      const removeCurrent = current => request(API + '?action=project-delete', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({projectId:current?.id || project.meta.cloudId, revision:current?.revision ?? revisions()[localId]})
+      });
+      let result;
+      try {
+        result = await removeCurrent(item);
+      } catch (error) {
+        if (error.code !== 'PROJECT_CONFLICT') throw error;
+        await projects();
+        item = projectCache.find(item => item.id === project?.meta?.cloudId || item.localId === localId);
+        if (!item) return {ok:true};
+        result = await removeCurrent(item);
+      }
       queue.remove(localId);
-      projectCache = projectCache.filter(item => item.localId !== localId);
+      projectCache = projectCache.filter(cached => cached.id !== item?.id && cached.localId !== localId);
       const all = revisions(); delete all[localId]; localStorage.setItem(revisionKey, JSON.stringify(all));
       return result;
     },

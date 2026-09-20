@@ -27,11 +27,29 @@ test('a server conflict is surfaced and does not advance the revision', async ()
   await assert.rejects(x.window.erpAsmProjects.save({meta:{portfolioId:'p'}}), /autre appareil/);
   assert.equal(JSON.parse(x.data.get('alpesex.application.revisions')).p, 1);
 });
-test('logout clears account data even when the server is unavailable', async () => {
+test('logout clears project data but preserves this installation licence', async () => {
   const x = setup([{ok:false,body:{}},{ok:false,body:{}}], {'pcasm_pro_projects':'private','alpesex.application.revisions':'{}','alpesex.application.license':'secret','alpesex.application.account':'1:2','alpesex.application.device':'stable'});
   await x.window.erpAsmAuth.logout();
-  assert.equal(x.data.size, 1);
+  assert.equal(x.data.size, 3);
   assert.equal(x.data.get('alpesex.application.device'), 'stable');
+  assert.equal(x.data.get('alpesex.application.license'), 'secret');
+  assert.equal(x.data.get('alpesex.application.account'), '1:2');
+});
+test('existing empty duplicate projects are pruned and their stale revisions are removed', async () => {
+  const old = id => ({id,localId:id,revision:1,updatedAt:'2026-07-13',ownerEmail:'one@example.test',hasDocuments:false,data:{meta:{portfolioId:id,referenceProjet:'ASM-DEMO-002',derniereMiseAJour:'2026-07-13'}}});
+  const current = {id:'current',localId:'current-local',revision:4,updatedAt:'2026-09-19',ownerEmail:'one@example.test',hasDocuments:false,data:{meta:{portfolioId:'current-local',referenceProjet:'ASM-DEMO-002',derniereMiseAJour:'2026-09-19'}}};
+  const x = setup([
+    {body:{projects:[old('old-a'),current,old('old-b')]}},
+    {body:{ok:true,deletedIds:['old-a','old-b']}}
+  ], {
+    'alpesex.application.revisions':JSON.stringify({'old-a':1,'old-b':1,'current-local':4}),
+    'alpesex.application.drafts':JSON.stringify({'old-a':{project:old('old-a').data,revision:1}})
+  });
+  const result = await x.window.erpAsmProjects.list();
+  assert.equal(Array.from(result.projects, item => item.id).join(','), 'current');
+  assert.deepEqual(JSON.parse(x.data.get('alpesex.application.revisions')), {'current-local':4});
+  assert.deepEqual(JSON.parse(x.data.get('alpesex.application.drafts')), {});
+  assert.equal(x.calls[1].url.endsWith('?action=project-prune'), true);
 });
 test('a second connected device receives the active device name', async () => {
   const x = setup([{body:{}},{ok:false,body:{error:'DEVICE_ALREADY_CONNECTED',deviceName:'POSTE-LUCAS'}}]);
@@ -46,6 +64,16 @@ test('saving keeps one Cloud row when the local alias changed', async () => {
   const saved = await x.window.erpAsmProjects.save({meta:{portfolioId:'changed-alias',cloudId:'cloud-id'}});
   assert.equal(JSON.parse(x.data.get('alpesex.application.revisions'))['changed-alias'], 4);
   assert.equal(saved.localId, 'changed-alias');
+});
+test('deletion refreshes the Cloud revision instead of using a stale local revision', async () => {
+  const cloud = {id:'cloud-id',localId:'p',revision:7,updatedAt:'2026-09-20',ownerEmail:'one@example.test',hasDocuments:false,data:{meta:{portfolioId:'p',cloudId:'cloud-id'}}};
+  const x = setup([
+    {body:{projects:[cloud]}},
+    {body:{ok:true,cleanupPending:0}}
+  ], {'alpesex.application.revisions':JSON.stringify({p:2})});
+  await x.window.erpAsmProjects.remove(cloud.data);
+  assert.equal(JSON.parse(x.calls[1].options.body).revision, 7);
+  assert.equal(x.data.get('alpesex.application.revisions'), '{}');
 });
 test('new account never inherits the previous local project portfolio', async () => {
   const x = setup([{body:{}},{body:{user:{organizationId:2,id:3,email:'new@example.test',role:'user'},activation:{role:'user'}}}], {'pcasm_pro_projects':'private','alpesex.application.account':'1:1'});

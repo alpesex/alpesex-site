@@ -50,6 +50,16 @@ function appProject(PDO $pdo, int $organizationId, string $id, bool $lock = fals
     return $row;
 }
 
+function appProjectIdentity(array $data, array $row): string
+{
+    $reference = mb_strtoupper(trim((string) ($data['meta']['referenceProjet'] ?? '')));
+    $reference = preg_replace('/\s+/u', ' ', $reference) ?: '';
+    if ($reference === '') {
+        return '';
+    }
+    return (string) $row['owner_user_id'] . '|' . $reference;
+}
+
 try {
     session_name('ALPESEXSESSID');
     session_set_cookie_params(['path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Strict']);
@@ -156,7 +166,8 @@ try {
 
     if ($action === 'projects' && $method === 'GET') {
         $query = $pdo->prepare(
-            'SELECT p.*,u.email AS owner_email,u.role AS owner_role,u.team_manager_id
+            'SELECT p.*,u.email AS owner_email,u.role AS owner_role,u.team_manager_id,
+                    EXISTS(SELECT 1 FROM application_documents d WHERE d.project_id=p.id) AS has_documents
              FROM application_projects p INNER JOIN users u ON u.id=p.owner_user_id
              WHERE p.organization_id=:organization_id AND p.deleted_at IS NULL ORDER BY p.updated_at DESC'
         );
@@ -174,11 +185,69 @@ try {
             $projects[] = [
                 'id' => $row['id'], 'localId' => $row['local_id'], 'name' => $row['name'],
                 'ownerEmail' => $row['owner_email'], 'revision' => (int) $row['revision'],
-                'updatedAt' => $row['updated_at'], 'access' => $permission, 'data' => $data,
+                'updatedAt' => $row['updated_at'], 'access' => $permission,
+                'hasDocuments' => (bool) $row['has_documents'], 'data' => $data,
             ];
         }
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['projects' => $projects], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if ($action === 'project-prune' && $method === 'POST') {
+        if ($user['role'] === 'direction') {
+            appFail(403, 'READ_ONLY');
+        }
+        $input = appJson();
+        $canonicalId = strtolower(trim((string) ($input['canonicalId'] ?? '')));
+        $duplicateIds = array_values(array_unique(array_filter(
+            array_map(static fn ($id): string => strtolower(trim((string) $id)), (array) ($input['duplicateIds'] ?? [])),
+            static fn (string $id): bool => $id !== '' && $id !== $canonicalId
+        )));
+        if ($canonicalId === '' || count($duplicateIds) > 20) {
+            appFail(422, 'PROJECT_INVALID');
+        }
+        sort($duplicateIds);
+        $pdo->beginTransaction();
+        $canonical = appProject($pdo, $user['organizationId'], $canonicalId, true);
+        if ($access->projectAccess($user, $canonical) !== 'editor') {
+            appFail(403, 'READ_ONLY');
+        }
+        $canonicalData = json_decode($cipher->decrypt((string) $canonical['project_data'], 'project:' . $canonical['id']), true);
+        $identity = is_array($canonicalData) ? appProjectIdentity($canonicalData, $canonical) : '';
+        if ($identity === '') {
+            appFail(422, 'PROJECT_INVALID');
+        }
+        $deletedIds = [];
+        foreach ($duplicateIds as $duplicateId) {
+            $duplicate = appProject($pdo, $user['organizationId'], $duplicateId, true);
+            if ($access->projectAccess($user, $duplicate) !== 'editor') {
+                appFail(403, 'READ_ONLY');
+            }
+            $duplicateData = json_decode($cipher->decrypt((string) $duplicate['project_data'], 'project:' . $duplicate['id']), true);
+            if (!is_array($duplicateData) || !hash_equals($identity, appProjectIdentity($duplicateData, $duplicate))) {
+                appFail(409, 'PROJECT_CONFLICT');
+            }
+            $documents = $pdo->prepare('SELECT COUNT(*) FROM application_documents WHERE project_id=:project_id');
+            $documents->execute(['project_id' => $duplicate['id']]);
+            if ((int) $documents->fetchColumn() !== 0) {
+                continue;
+            }
+            $delete = $pdo->prepare(
+                'UPDATE application_projects SET deleted_at=UTC_TIMESTAMP(),revision=revision+1,project_data=:empty
+                 WHERE id=:id AND deleted_at IS NULL'
+            );
+            $delete->execute([
+                'id' => $duplicate['id'],
+                'empty' => $cipher->encrypt('{}', 'project:' . $duplicate['id']),
+            ]);
+            if ($delete->rowCount() === 1) {
+                $deletedIds[] = (string) $duplicate['id'];
+            }
+        }
+        $pdo->commit();
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => true, 'deletedIds' => $deletedIds], JSON_UNESCAPED_UNICODE);
         exit;
     }
 

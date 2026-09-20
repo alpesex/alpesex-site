@@ -12,6 +12,10 @@
     for (const key of ['cloudId', 'cloudAccess', 'ownerEmail']) delete p.meta[key];
     return JSON.stringify(p);
   }
+  function projectDate(project) {
+    const value = String(project?.meta?.derniereMiseAJour || '');
+    return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
+  }
   function message(text) { status.hidden = !ERP_SESSION; status.textContent = text; }
   function stage(list) {
     if (!ready || applying || !ERP_SESSION) return;
@@ -41,6 +45,12 @@
         if (localId !== item.localId && localProject?.meta?.cloudId === item.id) merged.delete(localId);
       }
       merged.set(item.localId, p);
+      const draft = drafts[item.localId];
+      if (draft && Number(draft.revision || 0) < Number(item.revision || 0)
+          && projectDate(draft.project) < projectDate(p)) {
+        window.erpAsmProjects.discardDraft(item.localId);
+        delete drafts[item.localId];
+      }
       if (!drafts[item.localId]) { accepted.push(item); baseline.set(item.localId, fingerprint(p)); }
     }
     for (const [id, entry] of Object.entries(drafts)) merged.set(id, normalizeProject(entry.project));
@@ -103,8 +113,8 @@
     capture();
     try { await flush(); } catch (_) {}
     if (Object.keys(window.erpAsmProjects.drafts()).length) {
-      alert('Des modifications ne sont pas encore synchronisées. Exportez votre portefeuille ou résolvez le conflit avant de vous déconnecter.');
-      return;
+      if (!confirm('Une copie locale est en conflit avec le Cloud. Voulez-vous abandonner cette copie locale et vous déconnecter ?')) return;
+      for (const id of Object.keys(window.erpAsmProjects.drafts())) window.erpAsmProjects.discardDraft(id);
     }
     ready = false; baseline.clear(); await originalLogout(); status.hidden = true;
   };
