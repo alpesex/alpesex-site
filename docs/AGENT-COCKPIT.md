@@ -88,9 +88,9 @@ agents métier.
 Si une étape du script échoue, les fichiers sont restaurés. La migration ajoute
 une colonne nullable et des tables isolées ; elle ne supprime aucune donnée
 existante. Après activation, remettre `ALPESEX_MCP_ENABLED=0`, exécuter
-`php /home/www/app/bin/revoke-agent-tokens.php revoke-all` et restaurer
-uniquement les fichiers concernés depuis le répertoire de sauvegarde imprimé
-par le script en cas d’incident.
+`scripts/rollback-agent-coordinator.sh` avec le répertoire de sauvegarde
+imprimé par le déploiement. Ce script révoque les accès OAuth et restaure
+uniquement les fichiers concernés. Il ne touche pas aux données client.
 Le dump complet ne doit pas être restauré automatiquement : cela écraserait
 des écritures clients postérieures. Comparer les écritures avant toute
 restauration ciblée de données.
