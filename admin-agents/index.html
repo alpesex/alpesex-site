@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="no-referrer">
+  <title>Cockpit des agents — ALPES'Ex</title>
+  <link rel="stylesheet" href="./agents.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="../" aria-label="Retour à ALPES'Ex"><span class="brand-mark" aria-hidden="true"></span><span><strong>ALPES'Ex</strong><small>Cockpit des agents</small></span></a>
+      <div class="connection"><span class="live-dot" aria-hidden="true"></span><span id="sync-status">Connexion au Coordinateur…</span><button id="refresh" type="button">Actualiser</button></div>
+    </header>
+    <div class="page">
+      <nav class="sidebar" aria-label="Navigation du cockpit">
+        <button class="nav-item active" type="button" data-view="flow">Flux en direct</button>
+        <button class="nav-item" type="button" data-view="dossiers">Dossiers <span id="nav-dossiers">0</span></button>
+        <button class="nav-item" type="button" data-view="decisions">Décisions <span id="nav-decisions">0</span></button>
+        <button class="nav-item" type="button" data-view="journal">Journal</button>
+      </nav>
+      <main>
+        <div id="alert" class="alert" role="alert" hidden></div>
+        <section id="view-flow" class="view active" aria-labelledby="flow-title">
+          <div class="heading"><div><p class="eyebrow">SUPERVISION</p><h1 id="flow-title">Échanges entre les agents</h1></div><p id="viewer"></p></div>
+          <div class="metrics">
+            <article><span>Agents actifs</span><strong id="metric-agents">0 / 8</strong><small>activité récente</small></article>
+            <article><span>Transmissions</span><strong id="metric-events">0</strong><small>dernières 24 heures</small></article>
+            <article class="attention"><span>Décisions pour Lucas</span><strong id="metric-decisions">0</strong><small>en attente</small></article>
+          </div>
+          <div class="flow-layout">
+            <section class="panel graph-panel">
+              <div class="panel-heading"><h2>Réseau opérationnel</h2><span>Cliquez sur un agent</span></div>
+              <div id="agent-network" class="network" aria-label="Réseau des agents autour du Coordinateur"></div>
+              <div id="agent-detail" class="agent-detail" aria-live="polite">Sélectionnez un agent pour afficher sa dernière activité.</div>
+            </section>
+            <aside class="stack">
+              <section class="panel"><div class="panel-heading"><h2>Décisions en attente</h2><button type="button" data-go="decisions">Tout voir</button></div><div id="decision-preview" class="decision-list"></div></section>
+              <section class="panel"><div class="panel-heading"><h2>Derniers échanges</h2><button type="button" data-go="journal">Journal</button></div><div id="event-preview" class="timeline"></div></section>
+            </aside>
+          </div>
+        </section>
+
+        <section id="view-dossiers" class="view" aria-labelledby="dossiers-title" hidden>
+          <div class="heading"><div><p class="eyebrow">DOSSIERS MAÎTRES</p><h1 id="dossiers-title">Suivi des travaux</h1></div></div>
+          <section class="panel"><div id="dossier-list" class="dossier-grid"></div></section>
+        </section>
+
+        <section id="view-decisions" class="view" aria-labelledby="decisions-title" hidden>
+          <div class="heading"><div><p class="eyebrow">GUICHET UNIQUE</p><h1 id="decisions-title">Décisions présentées par le Coordinateur</h1></div></div>
+          <div id="decision-list" class="decision-board"></div>
+        </section>
+
+        <section id="view-journal" class="view" aria-labelledby="journal-title" hidden>
+          <div class="heading"><div><p class="eyebrow">TRAÇABILITÉ</p><h1 id="journal-title">Journal des transmissions</h1></div></div>
+          <section class="panel table-wrap"><table><thead><tr><th>Date</th><th>Dossier</th><th>Émetteur</th><th>Destinataire</th><th>Transmission</th></tr></thead><tbody id="journal-body"></tbody></table></section>
+        </section>
+      </main>
+    </div>
+  </div>
+  <dialog id="decision-dialog" aria-labelledby="decision-dialog-title">
+    <form id="decision-form">
+      <div class="dialog-head"><div><p class="eyebrow">DÉCISION DE LUCAS</p><h2 id="decision-dialog-title"></h2></div><button class="close" type="button" aria-label="Fermer">×</button></div>
+      <div id="decision-context"></div>
+      <fieldset><legend>Votre choix</legend><div id="decision-options"></div></fieldset>
+      <label>Note complémentaire <textarea id="decision-note" maxlength="1000" rows="3" placeholder="Facultatif"></textarea></label>
+      <p id="decision-message" role="status"></p>
+      <div class="dialog-actions"><button class="secondary close" type="button">Annuler</button><button class="primary" type="submit">Valider la décision</button></div>
+    </form>
+  </dialog>
+  <script src="./agents.js" defer></script>
+</body>
+</html>
