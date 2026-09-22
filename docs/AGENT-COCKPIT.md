@@ -106,9 +106,23 @@ Ne lancer `TEST-COCKPIT-9-AGENTS` que lorsque les neuf compétences originales
 sont accessibles dans la session et que la connexion MCP est vérifiée. Suivre
 les quinze étapes de la demande initiale, sans devis, déploiement, envoi ou
 campagne réelle. Ne pas inventer une réponse de Lucas. Rejouer un événement
-pour vérifier la déduplication. Après validation, la commande
-`php /home/www/app/bin/archive-agent-test.php TEST-COCKPIT-9-AGENTS` clôt
-le dossier, annule ses décisions encore en attente et conserve le journal.
+pour vérifier la déduplication. Après validation, sauvegarder la base avant
+d'exécuter l'archivage. L'outil de sauvegarde reste dans le dépôt Git et n'est
+pas installé dans `/home/www/app/bin/` :
+
+```bash
+cd /home/www/repository &&
+backup=$(mktemp -d /home/www/backups/agent-test-archive-XXXXXXXX) &&
+chmod 700 "$backup" &&
+git show 8e8cdc09de72dae5abc34b87f293c45cba48e5b2:server/bin/backup-agent-database.php > "$backup/backup-agent-database.php" &&
+test -s "$backup/backup-agent-database.php" &&
+ALPESEX_APP_DIR=/home/www/app php "$backup/backup-agent-database.php" "$backup" &&
+test -s "$backup/database.sql" &&
+php /home/www/app/bin/archive-agent-test.php TEST-COCKPIT-9-AGENTS
+```
+
+L'archivage clôt le dossier, annule ses décisions encore en attente et conserve
+le journal.
 
 Les tests CI utilisent une base jetable et un dossier fictif local. Ils ne
 contactent pas la production.
