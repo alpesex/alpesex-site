@@ -36,6 +36,7 @@ if ($optionFile === false) {
     exit(1);
 }
 chmod($optionFile, 0600);
+$failed = false;
 try {
     $escape = static function (string $value): string {
         if (str_contains($value, "\n") || str_contains($value, "\r")) {
@@ -70,8 +71,11 @@ try {
     fwrite(STDOUT, "Sauvegarde DB créée et non affichée.\n");
 } catch (Throwable) {
     @unlink($output);
-    fwrite(STDERR, "Sauvegarde DB interrompue. Aucun fichier déployé.\n");
-    exit(1);
+    $failed = true;
 } finally {
     @unlink($optionFile);
+}
+if ($failed) {
+    fwrite(STDERR, "Sauvegarde DB interrompue. Aucun fichier déployé.\n");
+    exit(1);
 }
