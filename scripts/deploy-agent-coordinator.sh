@@ -109,34 +109,49 @@ rollback_files() {
       rm -f -- "$destination"
     fi
   done
+  echo "Échec pendant : $phase" >&2
   echo "Publication interrompue. Fichiers restaurés. Sauvegarde DB conservée : $backup" >&2
   exit 1
 }
+phase='installation de la migration 017'
 trap rollback_files ERR
 
 install -m 0644 "$backup/stage/server/migrations/017_agent_coordinator_gateway.sql" \
   "$app_root/migrations/017_agent_coordinator_gateway.sql"
+phase='exécution des migrations'
 php "$app_root/bin/migrate.php"
 
 for file in "${files[@]}"; do
   if [ "$file" = server/migrations/017_agent_coordinator_gateway.sql ]; then
     continue
   fi
+  phase="publication de $file"
   destination=$(target "$file")
   mkdir -p "$(dirname "$destination")"
   install -m 0644 "$backup/stage/$file" "$destination"
   cmp -s "$backup/stage/$file" "$destination"
 done
 
+phase='contrôle HTTP de l’API agents'
 api_status=$(curl -q -sS --proto '=https' --max-time 20 -o /dev/null -w '%{http_code}' https://alpes-ex.fr/api/admin/agents/)
+phase='contrôle HTTP de la page agents'
 page_status=$(curl -q -sS --proto '=https' --max-time 20 -o /dev/null -w '%{http_code}' https://alpes-ex.fr/admin-agents/)
+phase='contrôle HTTP de la passerelle MCP'
 mcp_status=$(curl -q -sS --proto '=https' --max-time 20 -o /dev/null -w '%{http_code}' https://alpes-ex.fr/api/admin/agents/mcp/)
+phase='contrôle HTTP des métadonnées OAuth'
 resource_status=$(curl -q -sS --proto '=https' --max-time 20 -o /dev/null -w '%{http_code}' https://alpes-ex.fr/.well-known/oauth-protected-resource)
+phase='contrôle du type des métadonnées OAuth'
 resource_type=$(curl -q -sS --proto '=https' --max-time 20 -o /dev/null -w '%{content_type}' https://alpes-ex.fr/.well-known/oauth-protected-resource)
+echo "Contrôles HTTP page/API/MCP/métadonnées : $page_status/$api_status/$mcp_status/$resource_status ($resource_type)"
+phase='validation du statut de l’API agents'
 [ "$api_status" = 401 ]
+phase='validation du statut de la page agents'
 [ "$page_status" = 200 ]
+phase='validation du statut de la passerelle MCP'
 [ "$mcp_status" = 401 ]
+phase='validation du statut des métadonnées OAuth'
 [ "$resource_status" = 200 ]
+phase='validation du type des métadonnées OAuth'
 [[ "$resource_type" == application/json* ]]
 
 trap - ERR
