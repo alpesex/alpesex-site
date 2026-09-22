@@ -14,7 +14,7 @@ case "$backup" in
   /home/www/backups/agent-coordinator-*) ;;
   *) echo 'Sauvegarde hors du répertoire autorisé.' >&2; exit 1 ;;
 esac
-if [ ! -s "$backup/database.sql" ] || [ ! -d "$backup/previous" ]; then
+if [ ! -s "$backup/database.sql" ] || [ ! -d "$backup/previous" ] || [ ! -d "$backup/composer" ]; then
   echo 'Sauvegarde incomplète.' >&2
   exit 1
 fi
@@ -63,6 +63,7 @@ for file in "${files[@]}"; do
     rm -f -- "$destination"
   fi
 done
+cp -a "$backup/composer/." "$app_root/vendor/composer/"
 
 echo 'ANCIENS_FICHIERS_RESTAURES'
 echo 'Les tables et colonnes ajoutées restent isolées. Le dump DB est conservé.'

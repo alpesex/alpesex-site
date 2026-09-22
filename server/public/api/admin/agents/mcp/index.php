@@ -171,5 +171,6 @@ try {
 } catch (RuntimeException $exception) {
     rpcError(isset($id) && (is_int($id) || is_string($id)) ? $id : null, -32602, is_int($exception->getCode()) && $exception->getCode() >= 400 && $exception->getCode() <= 499 ? $exception->getMessage() : 'Invalid params');
 } catch (Throwable) {
+    http_response_code(500);
     rpcError(isset($id) && (is_int($id) || is_string($id)) ? $id : null, -32603, 'Internal error');
 }

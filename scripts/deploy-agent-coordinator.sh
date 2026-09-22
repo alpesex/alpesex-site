@@ -14,6 +14,7 @@ repository=/home/www/repository
 public_root=/home/www/public
 app_root=/home/www/app
 private_env=/home/www/private/.env
+composer=/home/www/bin/composer
 base=5fb82ac71859fb52d47fc7c7341ed3fdc3dd458b
 
 cd "$repository"
@@ -89,12 +90,17 @@ if [ ! -f "$private_env" ]; then
   echo 'Configuration privée absente.' >&2
   exit 1
 fi
+if [ ! -x "$composer" ] || [ ! -d "$app_root/vendor/composer" ]; then
+  echo 'Composer ou son autoload de production est absent.' >&2
+  exit 1
+fi
 if ALPESEX_APP_DIR="$app_root" php -r '$services=require getenv("ALPESEX_APP_DIR")."/bootstrap.php"; if (($_ENV["ALPESEX_MCP_ENABLED"] ?? "") === "1") exit(1);'; then
   :
 else
   echo 'Passerelle déjà active : désactivation préalable requise.' >&2
   exit 1
 fi
+cp -a "$app_root/vendor/composer" "$backup/composer"
 ALPESEX_APP_DIR="$app_root" php "$backup/stage/backup-agent-database.php" "$backup"
 test -s "$backup/database.sql"
 
@@ -109,6 +115,7 @@ rollback_files() {
       rm -f -- "$destination"
     fi
   done
+  cp -a "$backup/composer/." "$app_root/vendor/composer/"
   echo "Échec pendant : $phase" >&2
   echo "Publication interrompue. Fichiers restaurés. Sauvegarde DB conservée : $backup" >&2
   exit 1
@@ -130,10 +137,22 @@ install -d -m 0755 \
   "$public_root/api/admin/agents/oauth" \
   "$app_root/src/AgentCockpit"
 
+for file in server/src/AgentCockpit/Gateway.php server/src/AgentCockpit/OAuth.php; do
+  phase="publication de $file"
+  destination=$(target "$file")
+  mkdir -p "$(dirname "$destination")"
+  install -m 0644 "$backup/stage/$file" "$destination"
+  cmp -s "$backup/stage/$file" "$destination"
+done
+phase='reconstruction de l’autoload Composer'
+(cd "$app_root" && "$composer" dump-autoload --no-dev --classmap-authoritative --no-interaction)
+phase='vérification du chargement des classes MCP'
+ALPESEX_APP_DIR="$app_root" php -r 'require getenv("ALPESEX_APP_DIR")."/vendor/autoload.php"; if (!class_exists("AlpesEx\\Portal\\AgentCockpit\\Gateway") || !class_exists("AlpesEx\\Portal\\AgentCockpit\\OAuth")) exit(1);'
+
 for file in "${files[@]}"; do
-  if [ "$file" = server/migrations/017_agent_coordinator_gateway.sql ]; then
-    continue
-  fi
+  case "$file" in
+    server/migrations/017_agent_coordinator_gateway.sql|server/src/AgentCockpit/*) continue ;;
+  esac
   phase="publication de $file"
   destination=$(target "$file")
   mkdir -p "$(dirname "$destination")"

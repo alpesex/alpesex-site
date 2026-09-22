@@ -77,7 +77,8 @@ Le répertoire est en 0700 et les données en 0600. Il s’arrête si le dump
 échoue ; `mariadb-dump` ou `mysqldump` doit être disponible. Aucun secret n’est
 affiché. La passerelle reste désactivée après la publication.
 
-Le script vérifie la syntaxe PHP/JS, applique la migration 017, puis contrôle
+Le script vérifie la syntaxe PHP/JS, applique la migration 017, reconstruit
+l'autoload Composer optimisé après sauvegarde de sa version précédente, puis contrôle
 page 200, API 401, MCP 401 et métadonnées OAuth 200/JSON. Ensuite,
 `ALPESEX_MCP_REDIRECT_URIS` et `ALPESEX_MCP_ENABLED=1` sont à configurer dans
 le fichier privé, sans afficher son contenu. Vérifier la connexion dans
