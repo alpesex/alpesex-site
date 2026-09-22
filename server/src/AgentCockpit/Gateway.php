@@ -140,6 +140,13 @@ final class Gateway
             if ($dossierStatus === 'closed') {
                 throw new RuntimeException('Dossier clos.', 409);
             }
+            if ($decision !== null) {
+                $linked = $this->pdo->prepare('SELECT 1 FROM agent_decisions WHERE id=:decision AND dossier_id=:dossier');
+                $linked->execute(['decision' => $decision, 'dossier' => $dossier]);
+                if ($linked->fetchColumn() === false) {
+                    throw new RuntimeException('Décision liée inconnue pour ce dossier.', 422);
+                }
+            }
             $insert = $this->pdo->prepare(
                 'INSERT INTO agent_events (event_key, dossier_id, source_agent, target_agent, event_type, summary, payload_json)
                  VALUES (:key, :dossier, :source, :target, :type, :summary, :payload)'
@@ -200,6 +207,12 @@ final class Gateway
         }
         $this->pdo->beginTransaction();
         try {
+            $dossierQuery = $this->pdo->prepare('SELECT status FROM agent_dossiers WHERE id=:id FOR UPDATE');
+            $dossierQuery->execute(['id' => $dossier]);
+            $dossierStatus = $dossierQuery->fetchColumn();
+            if ($dossierStatus === false || $dossierStatus === 'closed') {
+                throw new RuntimeException('Dossier absent ou clos.', 422);
+            }
             $existing = $this->pdo->prepare('SELECT dossier_id, requester_agent, question, why_now, options_json, impacts_json,
                 recommendation, urgency, blocked_work FROM agent_decisions WHERE id=:id FOR UPDATE');
             $existing->execute(['id' => $id]);

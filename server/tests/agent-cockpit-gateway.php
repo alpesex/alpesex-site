@@ -46,9 +46,9 @@ $_ENV['ALPESEX_MCP_ENABLED'] = '1';
 $_ENV['ALPESEX_MCP_REDIRECT_URIS'] = 'https://chatgpt.com/connector_platform_oauth_redirect';
 
 $gateway = new Gateway($pdo);
-$gateway->dossier(['dossierId' => 'TEST-COCKPIT-9-AGENTS', 'title' => 'Fictif', 'status' => 'open', 'priority' => 'normal']);
+$gateway->dossier(['dossierId' => 'TEST-GATEWAY-LOCAL', 'title' => 'Fictif', 'status' => 'open', 'priority' => 'normal']);
 $event = [
-    'eventId' => 'test:coordination:0001', 'dossierId' => 'TEST-COCKPIT-9-AGENTS',
+    'eventId' => 'test:coordination:0001', 'dossierId' => 'TEST-GATEWAY-LOCAL',
     'agent' => 'satisfaction', 'destinataire' => 'coordination', 'type' => 'transmission',
     'statut' => 'available', 'resume' => 'Demande fictive qualifiée',
     'livrables' => ['Note fictive'], 'prochaineAction' => 'Transmettre au Commercial',
@@ -72,7 +72,7 @@ $gateway->event($active);
 check($pdo->query("SELECT status FROM agent_activity WHERE agent='coordination'")->fetchColumn() === 'active', 'Statut agent absent.');
 
 $decision = [
-    'decisionId' => 'TEST-DECISION-0001', 'dossierId' => 'TEST-COCKPIT-9-AGENTS',
+    'decisionId' => 'TEST-DECISION-0001', 'dossierId' => 'TEST-GATEWAY-LOCAL',
     'agentOrigine' => 'commercial', 'question' => 'Continuer la simulation ?',
     'contexte' => 'Recette fictive', 'options' => ['Continuer', 'Arrêter'],
     'impacts' => ['Continuer' => 'Simulation seulement', 'Arrêter' => 'Arrêt du test'],
@@ -80,7 +80,7 @@ $decision = [
 ];
 check($gateway->decision($decision)['duplicate'] === false, 'Décision non créée.');
 check($gateway->decision($decision)['duplicate'] === true, 'Décision doublée.');
-check($gateway->decisions(['dossierId' => 'TEST-COCKPIT-9-AGENTS'])['decisions'][0]['status'] === 'pending', 'Silence traité comme validation.');
+check($gateway->decisions(['dossierId' => 'TEST-GATEWAY-LOCAL'])['decisions'][0]['status'] === 'pending', 'Silence traité comme validation.');
 
 $oauth = new OAuth($pdo);
 check($oauth->activeAdmin(1) && !$oauth->activeAdmin(2), 'Liste administrateur non appliquée.');

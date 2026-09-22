@@ -42,7 +42,23 @@ jobs:
           php -l server/public/api/admin/agents/oauth/index.php
           php -l server/public/api/admin/agents/index.php
           php -l server/bin/archive-agent-test.php
+          php -l server/bin/revoke-agent-tokens.php
           php -l server/bin/backup-agent-database.php
           php server/tests/agent-cockpit-gateway.php
           node --check admin-agents/agents.js
           node admin-agents/tests/cockpit.smoke.mjs
+      - name: Parcours HTTP OAuth et MCP local
+        run: |
+          composer install --working-dir=server --no-interaction --no-progress
+          mkdir -p "$RUNNER_TEMP/alpesex-web" "$RUNNER_TEMP/alpesex-private"
+          ln -s "$GITHUB_WORKSPACE/server/public/api" "$RUNNER_TEMP/alpesex-web/api"
+          printf '%s\n' 'DB_HOST=127.0.0.1' 'DB_PORT=3306' 'DB_NAME=alpesex_test_agents' \
+            'DB_USERNAME=root' 'DB_PASSWORD=disposable-test-password' \
+            'ALPESEX_ADMIN_EMAILS=alpes.ex.asm@gmail.com' 'ALPESEX_MCP_ENABLED=1' \
+            'ALPESEX_MCP_REDIRECT_URIS=https://chatgpt.com/connector_platform_oauth_redirect' \
+            > "$RUNNER_TEMP/alpesex-private/.env"
+          printf '%s\n' '<?php session_name("ALPESEXSESSID"); session_start(); $_SESSION["user_id"]=1; echo "OK";' \
+            > "$RUNNER_TEMP/alpesex-web/session-fixture.php"
+          ALPESEX_APP_DIR="$GITHUB_WORKSPACE/server" ALPESEX_PRIVATE_DIR="$RUNNER_TEMP/alpesex-private" \
+            php -S 127.0.0.1:18765 -t "$RUNNER_TEMP/alpesex-web" > "$RUNNER_TEMP/alpesex-php.log" 2>&1 &
+          node server/tests/agent-cockpit-http.mjs

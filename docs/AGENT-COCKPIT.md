@@ -71,8 +71,8 @@ Après passage du workflow `Agent cockpit validation`, Lucas peut exécuter
 `scripts/deploy-agent-coordinator.sh` depuis sa session SSH habituelle avec
 le SHA complet contrôlé. Le script refuse une révision sans ancêtre connu ou
 des fichiers de production inattendus. Avant toute copie dans le public ou
-l’application, il sauvegarde les anciens fichiers, la configuration privée et
-un dump cohérent complet de la base dans `/home/www/backups/agent-coordinator-*`.
+l’application, il sauvegarde les anciens fichiers concernés et un dump
+cohérent complet de la base dans `/home/www/backups/agent-coordinator-*`.
 Le répertoire est en 0700 et les données en 0600. Il s’arrête si le dump
 échoue ; `mariadb-dump` ou `mysqldump` doit être disponible. Aucun secret n’est
 affiché. La passerelle reste désactivée après la publication.
@@ -87,8 +87,10 @@ agents métier.
 
 Si une étape du script échoue, les fichiers sont restaurés. La migration ajoute
 une colonne nullable et des tables isolées ; elle ne supprime aucune donnée
-existante. Après activation, remettre `ALPESEX_MCP_ENABLED=0`, révoquer les
-tokens et restaurer uniquement les fichiers concernés en cas d’incident.
+existante. Après activation, remettre `ALPESEX_MCP_ENABLED=0`, exécuter
+`php /home/www/app/bin/revoke-agent-tokens.php revoke-all` et restaurer
+uniquement les fichiers concernés depuis le répertoire de sauvegarde imprimé
+par le script en cas d’incident.
 Le dump complet ne doit pas être restauré automatiquement : cela écraserait
 des écritures clients postérieures. Comparer les écritures avant toute
 restauration ciblée de données.

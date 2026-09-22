@@ -23,7 +23,7 @@ git merge-base --is-ancestor "$base" "$revision"
 
 backup=$(mktemp -d /home/www/backups/agent-coordinator-XXXXXXXX)
 chmod 700 "$backup"
-mkdir -m 700 "$backup/stage" "$backup/previous" "$backup/private"
+mkdir -m 700 "$backup/stage" "$backup/previous"
 
 files=(
   .well-known/.htaccess
@@ -36,6 +36,7 @@ files=(
   server/src/AgentCockpit/Gateway.php
   server/src/AgentCockpit/OAuth.php
   server/bin/archive-agent-test.php
+  server/bin/revoke-agent-tokens.php
   server/migrations/017_agent_coordinator_gateway.sql
 )
 
@@ -78,7 +79,8 @@ for file in "$backup/stage/backup-agent-database.php" \
   "$backup/stage/server/public/api/admin/agents/oauth/index.php" \
   "$backup/stage/server/src/AgentCockpit/Gateway.php" \
   "$backup/stage/server/src/AgentCockpit/OAuth.php" \
-  "$backup/stage/server/bin/archive-agent-test.php"; do
+  "$backup/stage/server/bin/archive-agent-test.php" \
+  "$backup/stage/server/bin/revoke-agent-tokens.php"; do
   php -l "$file" >/dev/null
 done
 node --check "$backup/stage/admin-agents/agents.js"
@@ -87,8 +89,6 @@ if [ ! -f "$private_env" ]; then
   echo 'Configuration privée absente.' >&2
   exit 1
 fi
-cp -p "$private_env" "$backup/private/.env"
-chmod 600 "$backup/private/.env"
 if ALPESEX_APP_DIR="$app_root" php -r '$services=require getenv("ALPESEX_APP_DIR")."/bootstrap.php"; if (($_ENV["ALPESEX_MCP_ENABLED"] ?? "") === "1") exit(1);'; then
   :
 else
@@ -114,14 +114,19 @@ rollback_files() {
 }
 trap rollback_files ERR
 
+install -m 0644 "$backup/stage/server/migrations/017_agent_coordinator_gateway.sql" \
+  "$app_root/migrations/017_agent_coordinator_gateway.sql"
+php "$app_root/bin/migrate.php"
+
 for file in "${files[@]}"; do
+  if [ "$file" = server/migrations/017_agent_coordinator_gateway.sql ]; then
+    continue
+  fi
   destination=$(target "$file")
   mkdir -p "$(dirname "$destination")"
   install -m 0644 "$backup/stage/$file" "$destination"
   cmp -s "$backup/stage/$file" "$destination"
 done
-
-php "$app_root/bin/migrate.php"
 
 api_status=$(curl -q -sS --proto '=https' --max-time 20 -o /dev/null -w '%{http_code}' https://alpes-ex.fr/api/admin/agents/)
 page_status=$(curl -q -sS --proto '=https' --max-time 20 -o /dev/null -w '%{http_code}' https://alpes-ex.fr/admin-agents/)

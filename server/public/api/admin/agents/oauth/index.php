@@ -51,7 +51,7 @@ try {
         $self = htmlspecialchars((string) ($_SERVER['REQUEST_URI'] ?? '/api/admin/agents/oauth/?flow=authorize'), ENT_QUOTES, 'UTF-8');
         echo '<!doctype html><html lang="fr"><meta charset="utf-8"><title>Connexion ALPES’Ex</title>';
         echo '<p>Connectez-vous au compte administrateur ALPES’Ex dans un autre onglet, puis revenez ici.</p>';
-        echo '<p><a href="/compte/">Ouvrir la connexion ALPES’Ex</a></p>';
+        echo '<p><a href="/compte/" target="_blank" rel="noopener">Ouvrir la connexion ALPES’Ex</a></p>';
         echo '<a href="' . $self . '">Réessayer l’autorisation</a></html>';
         exit;
     }
@@ -80,7 +80,8 @@ try {
     header('Location: ' . $redirect, true, 303);
     exit;
 } catch (RuntimeException $exception) {
-    oauthError('invalid_request', $exception->getCode() >= 400 && $exception->getCode() <= 599 ? $exception->getCode() : 400);
+    $status = $exception->getCode() >= 400 && $exception->getCode() <= 599 ? $exception->getCode() : 400;
+    oauthError(($flow ?? '') === 'token' && $status === 400 ? 'invalid_grant' : 'invalid_request', $status);
 } catch (Throwable) {
     oauthError('server_error', 500);
 }

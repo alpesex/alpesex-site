@@ -54,7 +54,7 @@ function agentField(array $data, string $key, bool $required = true): ?string
 {
     $agent = textField($data, $key, 40, $required);
     if ($agent !== null && !in_array($agent, AGENT_NAMES, true)) {
-        throw new RuntimeException("Agent inconnu : {$agent}.", 422);
+        throw new RuntimeException('Agent inconnu.', 422);
     }
     return $agent;
 }
