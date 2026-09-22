@@ -121,6 +121,15 @@ install -m 0644 "$backup/stage/server/migrations/017_agent_coordinator_gateway.s
 phase='exécution des migrations'
 php "$app_root/bin/migrate.php"
 
+# The private backup uses umask 077, but the web/PHP processes must traverse
+# published code directories. Failed runs may have left them at mode 0700.
+phase='ouverture des nouveaux répertoires de code'
+install -d -m 0755 \
+  "$public_root/.well-known" \
+  "$public_root/api/admin/agents/mcp" \
+  "$public_root/api/admin/agents/oauth" \
+  "$app_root/src/AgentCockpit"
+
 for file in "${files[@]}"; do
   if [ "$file" = server/migrations/017_agent_coordinator_gateway.sql ]; then
     continue
