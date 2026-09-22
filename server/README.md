@@ -47,6 +47,11 @@ journal avec un jeton serveur dédié `ALPESEX_AGENT_INGEST_TOKEN`, d'au moins
 Appliquer la migration `016_create_agent_cockpit.sql` avant d'activer l'API.
 Ne jamais placer ces valeurs dans le dépôt ou dans la racine publique.
 
+La passerelle MCP du Coordinateur est documentée dans `docs/AGENT-COCKPIT.md`.
+Elle utilise OAuth lié au compte administrateur et reste désactivée tant que
+`ALPESEX_MCP_ENABLED=1` n'est pas configuré sur le serveur. Ne jamais copier le
+jeton historique d'alimentation dans ChatGPT, Codex ou une compétence.
+
 # Application mobile et tablette
 
 L’application complète est publiée sous `/application/`. Elle nécessite la migration

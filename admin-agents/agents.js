@@ -3,11 +3,10 @@
   const api='../api/admin/agents/';
   const labels={coordination:'Coordinateur',satisfaction:'Satisfaction',commercial:'Commercial',developpement:'Développeur',tests:'Testeur',audiovisuel:'Audiovisuel',montage:'Monteur',web:'Web',marketing:'Marketing'};
   const positions={satisfaction:[18,16],commercial:[50,12],developpement:[82,16],tests:[13,50],coordination:[50,50],audiovisuel:[87,50],montage:[18,84],web:[50,88],marketing:[82,84]};
-  let state={agents:Object.keys(labels),dossiers:[],events:[],decisions:[],csrf:''};
+  let state={agents:Object.keys(labels),agentStatuses:{},dossiers:[],events:[],decisions:[],csrf:''};
   const $=selector=>document.querySelector(selector);
   const esc=value=>String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
   const date=value=>value?new Date(value.replace(' ','T')+(value.includes('T')?'':'Z')).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'}):'—';
-  const recent=value=>value&&(Date.now()-new Date(value.replace(' ','T')+'Z').getTime())<2*60*60*1000;
   const empty=text=>'<p class="empty">'+esc(text)+'</p>';
 
   function showView(name){document.querySelectorAll('.view').forEach(v=>{const active=v.id==='view-'+name;v.hidden=!active;v.classList.toggle('active',active)});document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===name));}
@@ -18,21 +17,22 @@
   function renderNetwork(){
     const root=$('#agent-network'),center=positions.coordination;
     const lines=state.agents.filter(a=>a!=='coordination').map(agent=>{const p=positions[agent];const active=state.events.slice(0,12).some(e=>(e.sourceAgent===agent&&e.targetAgent==='coordination')||(e.targetAgent===agent&&e.sourceAgent==='coordination'));return '<line class="'+(active?'active':'')+'" x1="'+center[0]+'" y1="'+center[1]+'" x2="'+p[0]+'" y2="'+p[1]+'"/>'}).join('');
-    root.innerHTML='<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">'+lines+'</svg>'+state.agents.map(agent=>{const p=positions[agent],event=lastEvent(agent),isActive=agent==='coordination'||recent(event?.createdAt);return '<button type="button" class="agent-node '+agent+' '+(isActive?'active-now':'idle')+'" data-agent="'+agent+'" style="left:'+p[0]+'%;top:'+p[1]+'%"><strong>'+labels[agent]+'</strong><small>'+(event?esc(event.eventType):'En attente')+'</small></button>'}).join('');
+    root.innerHTML='<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">'+lines+'</svg>'+state.agents.map(agent=>{const p=positions[agent],event=lastEvent(agent),status=state.agentStatuses?.[agent]||'available',isActive=status==='active';return '<button type="button" class="agent-node '+agent+' '+(isActive?'active-now':'idle')+'" data-agent="'+agent+'" style="left:'+p[0]+'%;top:'+p[1]+'%"><strong>'+labels[agent]+'</strong><small>'+esc(status==='active'?'En cours':status==='blocked'?'Bloqué':event?'Disponible':'En attente')+'</small></button>'}).join('');
     root.querySelectorAll('[data-agent]').forEach(button=>button.addEventListener('click',()=>{root.querySelectorAll('.agent-node').forEach(n=>n.classList.remove('active'));button.classList.add('active');const event=lastEvent(button.dataset.agent);$('#agent-detail').innerHTML='<strong>'+labels[button.dataset.agent]+' :</strong> '+(event?esc(event.summary)+' · '+date(event.createdAt):'aucune activité enregistrée.')}));
   }
   function decisionCard(d,full=false){return '<article class="'+(full?'decision-full':'decision-card')+'"><h'+(full?'2':'3')+'>'+esc(d.id)+' · '+esc(d.question)+'</h'+(full?'2':'3')+'><p>'+esc(d.whyNow||d.blockedWork||'Décision transmise par le Coordinateur.')+'</p>'+(full?'<div class="decision-meta"><span class="badge '+esc(d.urgency)+'">'+esc(d.urgency)+'</span><span class="badge">'+esc(labels[d.requesterAgent]||d.requesterAgent)+'</span>'+(d.deadline?'<span class="badge">Échéance '+date(d.deadline)+'</span>':'')+'</div><p><strong>Recommandation :</strong> '+esc(d.recommendation||'Aucune')+'</p>':'')+'<button type="button" data-decide="'+esc(d.id)+'">Décider</button></article>'}
   function eventItem(e){return '<div class="timeline-item '+(e.eventType==='decision'?'decision':'')+'"><span class="timeline-dot"></span><div><strong>'+esc(labels[e.sourceAgent]||e.sourceAgent)+' → '+esc(labels[e.targetAgent]||e.targetAgent||'Dossier')+'</strong><small>'+esc(e.summary)+' · '+date(e.createdAt)+'</small></div></div>'}
+  function eventDetails(e){const p=e.payload;if(!p||typeof p!=='object')return '';const deliverables=Array.isArray(p.livrables)?p.livrables.join(', '):'';return '<small>Statut : '+esc(p.statut||'—')+' · Livrables : '+esc(deliverables||'—')+' · Décision liée : '+esc(p.decisionLiee||'—')+' · Prochaine action : '+esc(p.prochaineAction||'—')+'</small>'}
   function bindDecisionButtons(){document.querySelectorAll('[data-decide]').forEach(b=>b.addEventListener('click',()=>openDecision(b.dataset.decide)))}
   function render(){
-    const pending=state.decisions.filter(d=>d.status==='pending'),dayAgo=Date.now()-86400000,activeAgents=state.agents.filter(a=>a!=='coordination'&&recent(lastEvent(a)?.createdAt)).length;
+    const pending=state.decisions.filter(d=>d.status==='pending'),dayAgo=Date.now()-86400000,activeAgents=state.agents.filter(a=>a!=='coordination'&&state.agentStatuses?.[a]==='active').length;
     $('#metric-agents').textContent=activeAgents+' / 8';$('#metric-events').textContent=state.events.filter(e=>new Date(e.createdAt.replace(' ','T')+'Z').getTime()>dayAgo).length;$('#metric-decisions').textContent=pending.length;$('#nav-decisions').textContent=pending.length;$('#nav-dossiers').textContent=state.dossiers.filter(d=>d.status!=='closed').length;
     renderNetwork();
     $('#decision-preview').innerHTML=pending.length?pending.slice(0,3).map(d=>decisionCard(d)).join(''):empty('Aucune décision en attente.');
     $('#event-preview').innerHTML=state.events.length?state.events.slice(0,5).map(eventItem).join(''):empty('Aucun échange enregistré.');
     $('#dossier-list').innerHTML=state.dossiers.length?state.dossiers.map(d=>'<article class="dossier"><span class="badge '+esc(d.status)+'">'+esc(d.status)+'</span><h3>'+esc(d.id)+' · '+esc(d.title)+'</h3><p>'+esc(d.client||'Interne')+(d.version?' · '+esc(d.version):'')+'</p><p>Agent actuel : <strong>'+esc(labels[d.currentAgent]||d.currentAgent||'Coordinateur')+'</strong></p><p>Mis à jour : '+date(d.updatedAt)+'</p></article>').join(''):empty('Aucun dossier enregistré.');
     $('#decision-list').innerHTML=pending.length?pending.map(d=>decisionCard(d,true)).join(''):empty('Aucune décision ne requiert votre intervention.');
-    $('#journal-body').innerHTML=state.events.length?state.events.map(e=>'<tr><td>'+date(e.createdAt)+'</td><td>'+esc(e.dossierId||'—')+'</td><td>'+esc(labels[e.sourceAgent]||e.sourceAgent)+'</td><td>'+esc(labels[e.targetAgent]||e.targetAgent||'—')+'</td><td>'+esc(e.summary)+'</td></tr>').join(''):'<tr><td colspan="5">Aucune transmission enregistrée.</td></tr>';
+    $('#journal-body').innerHTML=state.events.length?state.events.map(e=>'<tr><td>'+date(e.createdAt)+'</td><td>'+esc(e.dossierId||'—')+'</td><td>'+esc(labels[e.sourceAgent]||e.sourceAgent)+'</td><td>'+esc(labels[e.targetAgent]||e.targetAgent||'—')+'</td><td>'+esc(e.summary)+eventDetails(e)+'</td></tr>').join(''):'<tr><td colspan="5">Aucune transmission enregistrée.</td></tr>';
     bindDecisionButtons();
   }
   async function load(){

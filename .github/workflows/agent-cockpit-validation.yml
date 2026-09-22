@@ -1,0 +1,48 @@
+name: Agent cockpit validation (no deployment)
+on:
+  push:
+    branches: [feature/agent-cockpit]
+    paths: ['admin-agents/**', 'server/**', '.well-known/**', '.github/workflows/agent-cockpit-validation.yml']
+  pull_request:
+    paths: ['admin-agents/**', 'server/**', '.well-known/**', '.github/workflows/agent-cockpit-validation.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gateway:
+    runs-on: ubuntu-24.04
+    services:
+      database:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: disposable-test-password
+          MARIADB_DATABASE: alpesex_test_agents
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_NAME: alpesex_test_agents
+      DB_USERNAME: root
+      DB_PASSWORD: disposable-test-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring
+          coverage: none
+      - name: Syntaxe et tests du cockpit
+        run: |
+          php -l server/src/AgentCockpit/Gateway.php
+          php -l server/src/AgentCockpit/OAuth.php
+          php -l server/public/api/admin/agents/mcp/index.php
+          php -l server/public/api/admin/agents/oauth/index.php
+          php -l server/public/api/admin/agents/index.php
+          php -l server/bin/archive-agent-test.php
+          php -l server/bin/backup-agent-database.php
+          php server/tests/agent-cockpit-gateway.php
+          node --check admin-agents/agents.js
+          node admin-agents/tests/cockpit.smoke.mjs

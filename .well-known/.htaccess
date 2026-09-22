@@ -1,0 +1,5 @@
+<FilesMatch "^oauth-(protected-resource|authorization-server)$">
+    ForceType application/json
+    Header set Cache-Control "no-store"
+    Header set X-Content-Type-Options "nosniff"
+</FilesMatch>

@@ -1,87 +1,107 @@
-# Cockpit des agents ALPES'Ex
+# Cockpit privé des neuf agents ALPES’Ex
 
-## Périmètre
+La page `/admin-agents/` est réservée à une session active dont l’adresse figure
+dans `ALPESEX_ADMIN_EMAILS`. Le navigateur lit `/api/admin/agents/` et Lucas y
+répond aux décisions avec un jeton CSRF. L’absence de réponse ne constitue
+jamais une validation.
 
-- page privée : `/admin-agents/` ;
-- lecture et décisions : `/api/admin/agents/` avec session ALPES'Ex et adresse administrateur autorisée ;
-- alimentation automatisée : même API avec un jeton Bearer serveur ;
-- stockage : migration `016_create_agent_cockpit.sql`.
+## Connexion du Coordinateur
 
-La page publique et l'espace client ne sont pas modifiés.
+La passerelle MCP à la demande est `/api/admin/agents/mcp/`. Elle propose
+`dossier_upsert`, `enregistrer_evenement`, `demander_decision` et
+`lire_decisions`. Elle écrit directement dans les tables du cockpit ; aucun
+processus IA permanent n’est installé. OpenAI Developers n’expose pas d’appel
+HTTP générique vers cette API.
 
-## Contrat d'alimentation
+Seul le Coordinateur doit disposer de cette connexion. Les huit agents métier
+renvoient leurs résultats au Coordinateur dans ChatGPT/Codex. La surface de
+délégation doit exclure les outils MCP ; ce contrôle doit être vérifié dans la
+session où les neuf compétences personnelles originales sont disponibles. Une
+instruction de compétence seule n’est pas une frontière d’autorisation.
 
-Les noms d'agents acceptés sont `coordination`, `satisfaction`, `commercial`,
-`developpement`, `tests`, `audiovisuel`, `montage`, `web` et `marketing`.
+La passerelle est désactivée tant que `ALPESEX_MCP_ENABLED` n’est pas `1`. Le
+jeton historique `ALPESEX_AGENT_INGEST_TOKEN` reste exclusivement dans
+`/home/www/private/.env`. Il n’est jamais envoyé à la connexion MCP ni aux
+agents métier. Les tokens OAuth sont aléatoires, stockés seulement sous forme
+d’empreinte SHA-256 et expirent après une heure. L’autorisation est liée à la
+session administrateur et à une adresse de retour autorisée. Les décisions
+sont accessibles en lecture à la passerelle ; seule la session de Lucas peut
+les résoudre.
 
-Chaque requête est un `POST` JSON vers `/api/admin/agents/` avec :
+Découverte OAuth : `/.well-known/oauth-protected-resource` et
+`/.well-known/oauth-authorization-server`. La connexion privée utilise OAuth
+2.1, code d’autorisation et PKCE S256. Le client autorisé pour cette première
+version est `https://chatgpt.com/oauth/client.json`. L’adresse de retour exacte
+affichée lors de la création de l’application doit être inscrite dans
+`ALPESEX_MCP_REDIRECT_URIS` avant l’activation. Si le cookie ALPES’Ex
+`SameSite=Strict` ne passe pas le premier saut depuis ChatGPT, la page
+d’autorisation permet de reprendre après connexion sur le même domaine.
 
-```http
-Authorization: Bearer <ALPESEX_AGENT_INGEST_TOKEN>
-Content-Type: application/json
-```
+Référence : https://developers.openai.com/plugins/build/auth
 
-### Ouvrir ou mettre à jour un dossier
+## Contrat des événements
 
-```json
-{
-  "action": "dossier_upsert",
-  "dossierId": "ALX-2026-001",
-  "title": "Évolution CPMP-ASM",
-  "client": "Interne",
-  "version": "6.0.2",
-  "status": "open",
-  "priority": "normal",
-  "currentAgent": "developpement"
-}
-```
+Les agents sont `coordination`, `satisfaction`, `commercial`, `developpement`,
+`tests`, `audiovisuel`, `montage`, `web`, `marketing`.
 
-### Journaliser une transmission
+`enregistrer_evenement` reçoit `eventId`, `dossierId`, `agent`, `type`,
+`statut`, `resume`, `destinataire` si nécessaire, `livrables`, `decisionLiee`
+si nécessaire et `prochaineAction`. Les types acceptés sont
+`prise_en_charge`, `progression`, `transmission`, `blocage`,
+`decision_requise`, `validation`, `cloture`. Le statut est `active`,
+`available` ou `blocked`. L’activité affichée vient de ces statuts pour les
+dossiers non clos. Une reprise du même `eventId` et du même contenu retourne
+`duplicate: true`. Réutiliser cet identifiant avec un autre contenu est refusé.
 
-```json
-{
-  "action": "event",
-  "dossierId": "ALX-2026-001",
-  "sourceAgent": "developpement",
-  "targetAgent": "tests",
-  "eventType": "delivery",
-  "summary": "Correctif transmis pour recette",
-  "payload": {"version": "6.0.2"}
-}
-```
+Une transmission entre deux métiers exige deux événements : métier →
+Coordinateur, puis Coordinateur → destinataire, avec des `eventId` distincts.
+`demander_decision` enregistre le Coordinateur comme demandeur, l’origine dans
+le contexte, deux ou trois options et leurs impacts, une recommandation et le
+travail bloqué. `lire_decisions` retourne l’état réel du dossier. `pending`
+n’autorise aucune suite dépendant de la réponse de Lucas.
 
-### Demander une décision à Lucas
+Le POST historique avec le jeton serveur continue d’exister pour préserver
+les intégrations existantes. Il refuse désormais les transmissions directes
+entre métiers et les demandes de décision sans Coordinateur. Il ne doit pas
+être exposé aux agents métier.
 
-```json
-{
-  "action": "decision_request",
-  "decisionId": "DEC-2026-001",
-  "dossierId": "ALX-2026-001",
-  "requesterAgent": "web",
-  "question": "Autoriser le déploiement en production ?",
-  "whyNow": "La recette est validée et le retour arrière est prêt.",
-  "options": ["Déployer maintenant", "Planifier le déploiement", "Ne pas déployer"],
-  "impacts": {"Déployer maintenant": "Interruption estimée : aucune"},
-  "recommendation": "Planifier le déploiement",
-  "urgency": "normal",
-  "blockedWork": "Publication en production"
-}
-```
+## Publication et retour arrière
 
-Le navigateur ne peut pas créer une demande de décision. Il peut uniquement
-répondre à une décision déjà présentée par le Coordinateur, avec un jeton CSRF
-lié à la session de Lucas.
+Après passage du workflow `Agent cockpit validation`, Lucas peut exécuter
+`scripts/deploy-agent-coordinator.sh` depuis sa session SSH habituelle avec
+le SHA complet contrôlé. Le script refuse une révision sans ancêtre connu ou
+des fichiers de production inattendus. Avant toute copie dans le public ou
+l’application, il sauvegarde les anciens fichiers, la configuration privée et
+un dump cohérent complet de la base dans `/home/www/backups/agent-coordinator-*`.
+Le répertoire est en 0700 et les données en 0600. Il s’arrête si le dump
+échoue ; `mariadb-dump` ou `mysqldump` doit être disponible. Aucun secret n’est
+affiché. La passerelle reste désactivée après la publication.
 
-## Activation et retour arrière
+Le script vérifie la syntaxe PHP/JS, applique la migration 017, puis contrôle
+page 200, API 401, MCP 401 et métadonnées OAuth 200/JSON. Ensuite,
+`ALPESEX_MCP_REDIRECT_URIS` et `ALPESEX_MCP_ENABLED=1` sont à configurer dans
+le fichier privé, sans afficher son contenu. Vérifier la connexion dans
+ChatGPT/Codex, les refus sans session et pour un autre compte, la liste des
+quatre outils, l’absence de secret dans les réponses et l’exclusion des huit
+agents métier.
 
-1. Sauvegarder la base et la version publique actuelle.
-2. Déployer les fichiers publics et l'application serveur.
-3. Configurer `ALPESEX_ADMIN_EMAILS` et `ALPESEX_AGENT_INGEST_TOKEN` dans le
-   fichier privé du serveur.
-4. Exécuter `php bin/migrate.php`.
-5. Vérifier l'accès refusé sans session, l'accès refusé à un compte non autorisé,
-   puis l'accès de Lucas.
-6. Injecter un dossier et un événement de contrôle, puis les supprimer si nécessaire.
+Si une étape du script échoue, les fichiers sont restaurés. La migration ajoute
+une colonne nullable et des tables isolées ; elle ne supprime aucune donnée
+existante. Après activation, remettre `ALPESEX_MCP_ENABLED=0`, révoquer les
+tokens et restaurer uniquement les fichiers concernés en cas d’incident.
+Le dump complet ne doit pas être restauré automatiquement : cela écraserait
+des écritures clients postérieures. Comparer les écritures avant toute
+restauration ciblée de données.
 
-En cas d'échec, restaurer les fichiers précédents. Les nouvelles tables sont
-isolées et ne modifient aucune donnée client ou donnée CPMP-ASM existante.
+## Recette fictive
+
+Ne lancer `TEST-COCKPIT-9-AGENTS` que lorsque les neuf compétences originales
+sont accessibles dans la session et que la connexion MCP est vérifiée. Suivre
+les quinze étapes de la demande initiale, sans devis, déploiement, envoi ou
+campagne réelle. Ne pas inventer une réponse de Lucas. Rejouer un événement
+pour vérifier la déduplication. Après validation, la commande
+`php /home/www/app/bin/archive-agent-test.php TEST-COCKPIT-9-AGENTS` clôt
+le dossier, annule ses décisions encore en attente et conserve le journal.
+
+Les tests CI utilisent une base jetable et un dossier fictif local. Ils ne
+contactent pas la production.

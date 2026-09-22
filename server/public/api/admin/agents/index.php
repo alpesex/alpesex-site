@@ -133,6 +133,14 @@ function recordEvent(PDO $pdo, array $data): void
 {
     $dossier = textField($data, 'dossierId', 64, false);
     ensureDossier($pdo, $dossier);
+    $source = agentField($data, 'sourceAgent');
+    $target = agentField($data, 'targetAgent', false);
+    if ($source !== 'coordination' && $target !== 'coordination') {
+        throw new RuntimeException('Toute transmission passe par le Coordinateur.', 422);
+    }
+    if ($source === 'coordination' && $target === 'coordination') {
+        throw new RuntimeException('Transmission réflexive interdite.', 422);
+    }
     $payload = $data['payload'] ?? null;
     if ($payload !== null && !is_array($payload)) {
         throw new RuntimeException('Le contenu détaillé doit être un objet JSON.', 422);
@@ -143,15 +151,15 @@ function recordEvent(PDO $pdo, array $data): void
     );
     $query->execute([
         'dossier' => $dossier,
-        'source' => agentField($data, 'sourceAgent'),
-        'target' => agentField($data, 'targetAgent', false),
+        'source' => $source,
+        'target' => $target,
         'type' => textField($data, 'eventType', 40),
         'summary' => textField($data, 'summary', 500),
         'payload' => $payload === null ? null : json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
     ]);
     if ($dossier !== null) {
         $update = $pdo->prepare('UPDATE agent_dossiers SET current_agent = :agent, updated_at = CURRENT_TIMESTAMP WHERE id = :id');
-        $update->execute(['agent' => agentField($data, 'targetAgent', false) ?? agentField($data, 'sourceAgent'), 'id' => $dossier]);
+        $update->execute(['agent' => $target ?? $source, 'id' => $dossier]);
     }
 }
 
@@ -183,6 +191,9 @@ function requestDecision(PDO $pdo, array $data): void
 {
     $dossier = textField($data, 'dossierId', 64, false);
     ensureDossier($pdo, $dossier);
+    if (agentField($data, 'requesterAgent') !== 'coordination') {
+        throw new RuntimeException('Les décisions sont transmises par le Coordinateur.', 422);
+    }
     $options = $data['options'] ?? null;
     if (!is_array($options) || count($options) < 2 || count($options) > 3) {
         throw new RuntimeException('Une décision doit proposer deux ou trois options.', 422);
@@ -212,7 +223,7 @@ function requestDecision(PDO $pdo, array $data): void
     $query->execute([
         'id' => textField($data, 'decisionId', 64),
         'dossier' => $dossier,
-        'agent' => agentField($data, 'requesterAgent'),
+        'agent' => 'coordination',
         'question' => textField($data, 'question', 500),
         'why' => textField($data, 'whyNow', 500, false),
         'options' => json_encode(array_values($options), JSON_UNESCAPED_UNICODE),
@@ -251,7 +262,7 @@ function resolveDecision(PDO $pdo, array $data, array $admin): void
     recordEvent($pdo, [
         'dossierId' => $decision['dossier_id'],
         'sourceAgent' => 'coordination',
-        'targetAgent' => $decision['requester_agent'],
+        'targetAgent' => $decision['requester_agent'] === 'coordination' ? null : $decision['requester_agent'],
         'eventType' => 'decision',
         'summary' => "Décision {$id} validée par Lucas : {$choice}",
         'payload' => ['decisionId' => $id, 'choice' => $choice],
@@ -267,9 +278,27 @@ function snapshot(PDO $pdo, array $admin): array
     )->fetchAll();
     $events = $pdo->query(
         'SELECT id, dossier_id AS dossierId, source_agent AS sourceAgent, target_agent AS targetAgent,
-                event_type AS eventType, summary, created_at AS createdAt
+                event_type AS eventType, summary, payload_json AS payloadJson, created_at AS createdAt
          FROM agent_events ORDER BY created_at DESC, id DESC LIMIT 200'
     )->fetchAll();
+    foreach ($events as &$event) {
+        $event['payload'] = $event['payloadJson'] === null ? null : json_decode((string) $event['payloadJson'], true);
+        unset($event['payloadJson']);
+    }
+    unset($event);
+    $activity = $pdo->query(
+        "SELECT a.agent, a.status FROM agent_activity a
+         INNER JOIN agent_dossiers d ON d.id=a.dossier_id
+         WHERE d.status <> 'closed' ORDER BY a.updated_at DESC"
+    )->fetchAll();
+    $agentStatuses = array_fill_keys(AGENT_NAMES, 'available');
+    foreach ($activity as $item) {
+        if ($item['status'] === 'blocked') {
+            $agentStatuses[$item['agent']] = 'blocked';
+        } elseif ($item['status'] === 'active') {
+            $agentStatuses[$item['agent']] = 'active';
+        }
+    }
     $decisions = $pdo->query(
         'SELECT id, dossier_id AS dossierId, requester_agent AS requesterAgent, question, why_now AS whyNow,
                 options_json AS options, impacts_json AS impacts, recommendation, urgency, deadline,
@@ -286,6 +315,7 @@ function snapshot(PDO $pdo, array $admin): array
         'viewer' => ['name' => $admin['name'], 'email' => $admin['email']],
         'csrf' => $admin['csrf'],
         'agents' => AGENT_NAMES,
+        'agentStatuses' => $agentStatuses,
         'dossiers' => $dossiers,
         'events' => $events,
         'decisions' => $decisions,
@@ -347,6 +377,6 @@ try {
     if (isset($pdo) && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    error_log('agent-cockpit ' . get_class($exception) . ': ' . $exception->getMessage());
+    error_log('agent-cockpit internal error: ' . get_class($exception));
     jsonResponse(['message' => 'Une erreur interne empêche le chargement du cockpit.'], 500);
 }
