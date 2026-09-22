@@ -80,8 +80,12 @@ affiché. La passerelle reste désactivée après la publication.
 Le script vérifie la syntaxe PHP/JS, applique la migration 017, reconstruit
 l'autoload Composer optimisé après sauvegarde de sa version précédente, puis contrôle
 page 200, API 401, MCP 401 et métadonnées OAuth 200/JSON. Ensuite,
-`ALPESEX_MCP_REDIRECT_URIS` et `ALPESEX_MCP_ENABLED=1` sont à configurer dans
-le fichier privé, sans afficher son contenu. Vérifier la connexion dans
+`scripts/activate-agent-coordinator.sh` ajoute l'URI de retour stable de ChatGPT
+et `ALPESEX_MCP_ENABLED=1` au fichier privé, après sauvegarde et avec restauration
+automatique si les contrôles anonymes échouent. Il n'affiche aucune valeur privée.
+Vérifier que la page de gestion de la connexion ChatGPT présente bien l'URI
+`https://chatgpt.com/connector_platform_oauth_redirect` et le document client
+`https://chatgpt.com/oauth/client.json`. Vérifier ensuite la connexion dans
 ChatGPT/Codex, les refus sans session et pour un autre compte, la liste des
 quatre outils, l’absence de secret dans les réponses et l’exclusion des huit
 agents métier.
