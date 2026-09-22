@@ -36,6 +36,17 @@ mots de passe et sans envoyer de message.
 - secrets hors de la racine Web et hors de GitHub ;
 - erreurs publiques génériques, détails techniques réservés aux journaux ;
 - aucun endpoint public de test d'envoi.
+## Cockpit privé des agents
+
+Le cockpit `/admin-agents/` lit son journal via `/api/admin/agents/`. Son accès
+est limité aux adresses listées dans `ALPESEX_ADMIN_EMAILS` (séparées par des
+virgules) et nécessite une session ALPES'Ex active. Les agents alimentent le
+journal avec un jeton serveur dédié `ALPESEX_AGENT_INGEST_TOKEN`, d'au moins
+32 caractères, transmis dans l'en-tête `Authorization: Bearer ...`.
+
+Appliquer la migration `016_create_agent_cockpit.sql` avant d'activer l'API.
+Ne jamais placer ces valeurs dans le dépôt ou dans la racine publique.
+
 # Application mobile et tablette
 
 L’application complète est publiée sous `/application/`. Elle nécessite la migration
