@@ -235,6 +235,71 @@ function requestDecision(PDO $pdo, array $data): void
     ]);
 }
 
+function createInput(PDO $pdo, array $data): array
+{
+    $id = textField($data, 'inputId', 80, false)
+        ?? 'IN-' . gmdate('YmdHis') . '-' . bin2hex(random_bytes(6));
+    if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{5,79}$/D', $id) !== 1) {
+        throw new RuntimeException('Identifiant d’entrée invalide.', 422);
+    }
+    $source = textField($data, 'source', 40, false) ?? 'cockpit';
+    if (preg_match('/^[a-z][a-z0-9_-]{1,39}$/D', $source) !== 1) {
+        throw new RuntimeException('Source d’entrée invalide.', 422);
+    }
+    $reference = textField($data, 'externalReference', 190, false);
+    $title = textField($data, 'title', 190);
+    $summary = textField($data, 'summary', 1000);
+    $priority = textField($data, 'priority', 20, false) ?? 'normal';
+    if (!in_array($priority, ['low', 'normal', 'high', 'critical'], true)) {
+        throw new RuntimeException('Priorité d’entrée invalide.', 422);
+    }
+    $payload = $data['payload'] ?? null;
+    if ($payload !== null && !is_array($payload)) {
+        throw new RuntimeException('Le contenu d’entrée doit être un objet JSON.', 422);
+    }
+    $payloadJson = $payload === null ? null : json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+
+    $existing = $pdo->prepare(
+        'SELECT id, source, external_reference, title, summary, priority, payload_json FROM agent_inputs
+         WHERE id=:id OR (source=:source AND external_reference=:reference AND :reference_check IS NOT NULL)
+         LIMIT 1 FOR UPDATE'
+    );
+    $existing->execute(['id' => $id, 'source' => $source, 'reference' => $reference, 'reference_check' => $reference]);
+    $previous = $existing->fetch();
+    $matches = static fn (array $row): bool => $row['source'] === $source
+        && $row['external_reference'] === $reference
+        && $row['title'] === $title && $row['summary'] === $summary
+        && $row['priority'] === $priority && $row['payload_json'] === $payloadJson;
+    if (is_array($previous)) {
+        if (!$matches($previous)) {
+            throw new RuntimeException('Entrée déjà utilisée avec un contenu différent.', 409);
+        }
+        return ['inputId' => $previous['id'], 'duplicate' => true];
+    }
+
+    $insert = $pdo->prepare(
+        'INSERT INTO agent_inputs (id, source, external_reference, title, summary, payload_json, priority)
+         VALUES (:id, :source, :reference, :title, :summary, :payload, :priority)'
+    );
+    try {
+        $insert->execute([
+            'id' => $id, 'source' => $source, 'reference' => $reference,
+            'title' => $title, 'summary' => $summary, 'payload' => $payloadJson, 'priority' => $priority,
+        ]);
+    } catch (PDOException $exception) {
+        if ($exception->getCode() !== '23000') {
+            throw $exception;
+        }
+        $existing->execute(['id' => $id, 'source' => $source, 'reference' => $reference, 'reference_check' => $reference]);
+        $concurrent = $existing->fetch();
+        if (!is_array($concurrent) || !$matches($concurrent)) {
+            throw new RuntimeException('Entrée déjà utilisée avec un contenu différent.', 409);
+        }
+        return ['inputId' => $concurrent['id'], 'duplicate' => true];
+    }
+    return ['inputId' => $id, 'duplicate' => false];
+}
+
 function resolveDecision(PDO $pdo, array $data, array $admin): void
 {
     $id = textField($data, 'decisionId', 64);
@@ -311,6 +376,12 @@ function snapshot(PDO $pdo, array $admin): array
         $decision['impacts'] = $decision['impacts'] === null ? null : json_decode((string) $decision['impacts'], true);
     }
     unset($decision);
+    $inputs = $pdo->query(
+        'SELECT id, source, external_reference AS externalReference, title, summary, priority, status,
+                dossier_id AS dossierId, result_note AS resultNote, created_at AS createdAt,
+                claimed_at AS claimedAt, completed_at AS completedAt
+         FROM agent_inputs ORDER BY (status = \'pending\') DESC, created_at DESC LIMIT 100'
+    )->fetchAll();
     return [
         'viewer' => ['name' => $admin['name'], 'email' => $admin['email']],
         'csrf' => $admin['csrf'],
@@ -319,6 +390,7 @@ function snapshot(PDO $pdo, array $admin): array
         'dossiers' => $dossiers,
         'events' => $events,
         'decisions' => $decisions,
+        'inputs' => $inputs,
         'generatedAt' => gmdate('c'),
     ];
 }
@@ -343,25 +415,34 @@ try {
     $action = textField($data, 'action', 40);
     if (isIngestRequest()) {
         $pdo->beginTransaction();
-        match ($action) {
-            'dossier_upsert' => upsertDossier($pdo, $data),
-            'event' => recordEvent($pdo, $data),
-            'decision_request' => requestDecision($pdo, $data),
-            default => throw new RuntimeException('Action agent inconnue.', 422),
-        };
+        $result = null;
+        if ($action === 'input_create') {
+            $result = createInput($pdo, $data);
+        } else {
+            match ($action) {
+                'dossier_upsert' => upsertDossier($pdo, $data),
+                'event' => recordEvent($pdo, $data),
+                'decision_request' => requestDecision($pdo, $data),
+                default => throw new RuntimeException('Action agent inconnue.', 422),
+            };
+        }
         $pdo->commit();
-        jsonResponse(['ok' => true], 201);
+        jsonResponse(['ok' => true, 'result' => is_array($result) ? $result : null], 201);
     }
 
     $admin = requireAdmin($pdo);
     requireCsrf($admin['csrf']);
-    if ($action !== 'resolve_decision') {
+    $pdo->beginTransaction();
+    $result = null;
+    if ($action === 'resolve_decision') {
+        resolveDecision($pdo, $data, $admin);
+    } elseif ($action === 'create_input') {
+        $result = createInput($pdo, $data);
+    } else {
         throw new RuntimeException('Action administrateur inconnue.', 422);
     }
-    $pdo->beginTransaction();
-    resolveDecision($pdo, $data, $admin);
     $pdo->commit();
-    jsonResponse(['ok' => true]);
+    jsonResponse(['ok' => true, 'result' => is_array($result) ? $result : null]);
 } catch (JsonException) {
     if (isset($pdo) && $pdo->inTransaction()) {
         $pdo->rollBack();

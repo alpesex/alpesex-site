@@ -18,6 +18,7 @@
       <nav class="sidebar" aria-label="Navigation du cockpit">
         <button class="nav-item active" type="button" data-view="flow">Flux en direct</button>
         <button class="nav-item" type="button" data-view="dossiers">Dossiers <span id="nav-dossiers">0</span></button>
+        <button class="nav-item" type="button" data-view="entrees">Entrées <span id="nav-entrees">0</span></button>
         <button class="nav-item" type="button" data-view="decisions">Décisions <span id="nav-decisions">0</span></button>
         <button class="nav-item" type="button" data-view="journal">Journal</button>
       </nav>
@@ -29,6 +30,7 @@
             <article><span>Agents actifs</span><strong id="metric-agents">0 / 8</strong><small>activité récente</small></article>
             <article><span>Transmissions</span><strong id="metric-events">0</strong><small>dernières 24 heures</small></article>
             <article class="attention"><span>Décisions pour Lucas</span><strong id="metric-decisions">0</strong><small>en attente</small></article>
+            <article><span>Nouvelles entrées</span><strong id="metric-inputs">0</strong><small>à prendre en charge</small></article>
           </div>
           <div class="flow-layout">
             <section class="panel graph-panel">
@@ -46,6 +48,23 @@
         <section id="view-dossiers" class="view" aria-labelledby="dossiers-title" hidden>
           <div class="heading"><div><p class="eyebrow">DOSSIERS MAÎTRES</p><h1 id="dossiers-title">Suivi des travaux</h1></div></div>
           <section class="panel"><div id="dossier-list" class="dossier-grid"></div></section>
+        </section>
+
+        <section id="view-entrees" class="view" aria-labelledby="entrees-title" hidden>
+          <div class="heading"><div><p class="eyebrow">ALIMENTATION DU COORDINATEUR</p><h1 id="entrees-title">File des demandes</h1></div></div>
+          <div class="input-layout">
+            <section class="panel">
+              <div class="panel-heading"><h2>Nouvelle demande interne</h2><span>Elle sera traitée par le Coordinateur</span></div>
+              <form id="input-form" class="input-form">
+                <label>Titre <input id="input-title" maxlength="190" required></label>
+                <label>Résumé <textarea id="input-summary" maxlength="1000" rows="5" required></textarea></label>
+                <label>Priorité <select id="input-priority"><option value="normal">Normale</option><option value="high">Haute</option><option value="critical">Critique</option><option value="low">Basse</option></select></label>
+                <p id="input-message" role="status"></p>
+                <button class="primary" type="submit">Envoyer au Coordinateur</button>
+              </form>
+            </section>
+            <section class="panel table-wrap"><table><thead><tr><th>Date</th><th>Source</th><th>Demande</th><th>Priorité</th><th>État</th><th>Dossier</th></tr></thead><tbody id="input-body"></tbody></table></section>
+          </div>
         </section>
 
         <section id="view-decisions" class="view" aria-labelledby="decisions-title" hidden>

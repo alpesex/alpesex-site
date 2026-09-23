@@ -78,9 +78,22 @@ async function rpc(method, params = {}) {
 
 assert.equal((await rpc('initialize', { protocolVersion: '2025-11-25' })).result.protocolVersion, '2025-11-25');
 const names = (await rpc('tools/list')).result.tools.map(tool => tool.name);
-assert.deepEqual(names, ['dossier_upsert', 'enregistrer_evenement', 'demander_decision', 'lire_decisions']);
+assert.deepEqual(names, ['dossier_upsert', 'enregistrer_evenement', 'demander_decision', 'lire_decisions', 'lire_entrees', 'traiter_entree']);
 const dossier = 'TEST-HTTP-LOCAL';
 assert.equal((await rpc('tools/call', { name: 'dossier_upsert', arguments: { dossierId: dossier, title: 'Fictif', status: 'open', priority: 'normal' } })).result.structuredContent.dossierId, dossier);
+const cockpit = await request('/api/admin/agents/', { headers: { Cookie: cookie, Accept: 'application/json' } });
+assert.equal(cockpit.status, 200);
+const cockpitState = await cockpit.json();
+const createInput = await request('/api/admin/agents/', {
+  method: 'POST',
+  headers: { Cookie: cookie, 'Content-Type': 'application/json', 'X-CSRF-Token': cockpitState.csrf },
+  body: JSON.stringify({ action: 'create_input', inputId: 'TEST-HTTP-INPUT', source: 'cockpit', title: 'Entrée HTTP fictive', summary: 'Tester la file MCP', priority: 'high' }),
+});
+assert.equal(createInput.status, 200);
+const inputs = (await rpc('tools/call', { name: 'lire_entrees', arguments: { limit: 10 } })).result.structuredContent.entrees;
+assert.ok(inputs.some(input => input.entreeId === 'TEST-HTTP-INPUT'));
+assert.equal((await rpc('tools/call', { name: 'traiter_entree', arguments: { entreeId: 'TEST-HTTP-INPUT', executionId: 'http:run:0001', action: 'prendre' } })).result.structuredContent.status, 'processing');
+assert.equal((await rpc('tools/call', { name: 'traiter_entree', arguments: { entreeId: 'TEST-HTTP-INPUT', executionId: 'http:run:0001', action: 'terminer', dossierId: dossier, note: 'Test terminé' } })).result.structuredContent.status, 'completed');
 const event = {
   eventId: 'http:coordination:0001', dossierId: dossier,
   agent: 'coordination', destinataire: 'satisfaction', type: 'transmission',

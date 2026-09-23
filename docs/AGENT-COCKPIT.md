@@ -8,8 +8,9 @@ jamais une validation.
 ## Connexion du Coordinateur
 
 La passerelle MCP à la demande est `/api/admin/agents/mcp/`. Elle propose
-`dossier_upsert`, `enregistrer_evenement`, `demander_decision` et
-`lire_decisions`. Elle écrit directement dans les tables du cockpit ; aucun
+`dossier_upsert`, `enregistrer_evenement`, `demander_decision`,
+`lire_decisions`, `lire_entrees` et `traiter_entree`. Elle écrit directement
+dans les tables du cockpit ; aucun
 processus IA permanent n’est installé. OpenAI Developers n’expose pas d’appel
 HTTP générique vers cette API.
 
@@ -60,6 +61,29 @@ le contexte, deux ou trois options et leurs impacts, une recommandation et le
 travail bloqué. `lire_decisions` retourne l’état réel du dossier. `pending`
 n’autorise aucune suite dépendant de la réponse de Lucas.
 
+## File d’entrée et routines
+
+Les formulaires internes ou les intégrations serveur déposent une demande dans
+`agent_inputs`. Une référence externe peut être fournie pour dédupliquer une
+source telle qu’un formulaire, un courriel ou un événement GitHub. Le jeton
+d’ingestion historique peut créer une entrée avec l’action `input_create`, mais
+il reste exclusivement côté serveur.
+
+Le Coordinateur appelle `lire_entrees`, puis réserve chaque entrée avec
+`traiter_entree` et l’action `prendre` avant de commencer. Chaque cycle fournit
+un `executionId` stable : une autre exécution ne peut pas reprendre la même
+entrée simultanément. Une entrée passe de
+`pending` à `processing`, puis à `completed` ou `rejected`. L’action
+`remettre_en_attente` est réservée à un échec réversible. Terminer une entrée
+peut l’associer au dossier créé. Les répétitions identiques sont idempotentes ;
+une transition incohérente est refusée.
+
+Une tâche planifiée ChatGPT/Codex peut exécuter ce cycle sans API OpenAI
+payante : lire la file, réserver les entrées, ouvrir les dossiers, mobiliser
+les compétences et consigner les événements. Elle doit conserver tous les
+points d’arrêt humains et ne jamais traiter une décision `pending` comme un
+accord.
+
 Le POST historique avec le jeton serveur continue d’exister pour préserver
 les intégrations existantes. Il refuse désormais les transmissions directes
 entre métiers et les demandes de décision sans Coordinateur. Il ne doit pas
@@ -87,7 +111,7 @@ Vérifier que la page de gestion de la connexion ChatGPT présente bien l'URI
 `https://chatgpt.com/connector_platform_oauth_redirect` et le document client
 `https://chatgpt.com/oauth/client.json`. Vérifier ensuite la connexion dans
 ChatGPT/Codex, les refus sans session et pour un autre compte, la liste des
-quatre outils, l’absence de secret dans les réponses et l’exclusion des huit
+six outils, l’absence de secret dans les réponses et l’exclusion des huit
 agents métier.
 
 Si une étape du script échoue, les fichiers sont restaurés. La migration ajoute
@@ -99,6 +123,15 @@ uniquement les fichiers concernés. Il ne touche pas aux données client.
 Le dump complet ne doit pas être restauré automatiquement : cela écraserait
 des écritures clients postérieures. Comparer les écritures avant toute
 restauration ciblée de données.
+
+Pour publier ensuite la file d’entrée, désactiver temporairement la passerelle
+et utiliser `scripts/deploy-agent-automation.sh` avec le SHA complet de la
+branche contrôlée. Le script sauvegarde les fichiers et la base, applique la
+migration 018 et laisse la passerelle désactivée. Après les contrôles serveur,
+la réactiver avec la procédure existante. Le retour arrière ciblé utilise
+`scripts/rollback-agent-automation.sh` et le répertoire de sauvegarde imprimé ;
+la table additive `agent_inputs` reste conservée pour éviter toute perte de
+demande reçue.
 
 ## Recette fictive
 
