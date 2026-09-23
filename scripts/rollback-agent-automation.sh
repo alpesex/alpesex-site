@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run only after setting ALPESEX_MCP_ENABLED=0 in /home/www/private/.env.
+# Run only after scripts/disable-agent-coordinator.sh reported PASSERELLE_DESACTIVEE.
 # Requires the exact backup directory printed by deploy-agent-automation.sh.
 set -Eeuo pipefail
 umask 077

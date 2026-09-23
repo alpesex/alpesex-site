@@ -124,11 +124,13 @@ Le dump complet ne doit pas être restauré automatiquement : cela écraserait
 des écritures clients postérieures. Comparer les écritures avant toute
 restauration ciblée de données.
 
-Pour publier ensuite la file d’entrée, désactiver temporairement la passerelle
-et utiliser `scripts/deploy-agent-automation.sh` avec le SHA complet de la
-branche contrôlée. Le script sauvegarde les fichiers et la base, applique la
-migration 018 et laisse la passerelle désactivée. Après les contrôles serveur,
-la réactiver avec la procédure existante. Le retour arrière ciblé utilise
+Pour publier ensuite la file d’entrée, exécuter d'abord
+`scripts/disable-agent-coordinator.sh` : il sauvegarde le fichier privé, remplace
+uniquement la variable d'activation et n'affiche aucune valeur sensible. Utiliser
+ensuite `scripts/deploy-agent-automation.sh` avec le SHA complet de la branche
+contrôlée. Le script sauvegarde les fichiers et la base, applique la migration 018
+et laisse la passerelle désactivée. Après les contrôles serveur, la réactiver avec
+`scripts/activate-agent-coordinator.sh`. Le retour arrière ciblé utilise
 `scripts/rollback-agent-automation.sh` et le répertoire de sauvegarde imprimé ;
 la table additive `agent_inputs` reste conservée pour éviter toute perte de
 demande reçue.
