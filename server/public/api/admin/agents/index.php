@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use AlpesEx\Portal\Database;
+use AlpesEx\Portal\AgentCockpit\CoordinatorWake;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -355,6 +356,15 @@ function resolveDecision(PDO $pdo, array $data, array $admin): void
     $linkInput->execute(['dossier' => $decision['dossier_id'], 'input' => $resumeInput['inputId']]);
 }
 
+function notifyCoordinator(CoordinatorWake $wake): void
+{
+    try {
+        $wake->notify();
+    } catch (Throwable $exception) {
+        error_log('agent-cockpit coordinator wake failed: ' . get_class($exception));
+    }
+}
+
 function snapshot(PDO $pdo, array $admin): array
 {
     $dossiers = $pdo->query(
@@ -418,9 +428,10 @@ function snapshot(PDO $pdo, array $admin): array
 
 try {
     $appDirectory = getenv('ALPESEX_APP_DIR') ?: dirname(__DIR__, 4) . '/app';
-    /** @var array{config: AlpesEx\Portal\Config} $services */
+    /** @var array{config: AlpesEx\Portal\Config, mailer: AlpesEx\Portal\Mail\Mailer} $services */
     $services = require $appDirectory . '/bootstrap.php';
     $pdo = Database::connect($services['config']);
+    $coordinatorWake = CoordinatorWake::usingMailer($_ENV, $services['mailer']);
     $method = (string) ($_SERVER['REQUEST_METHOD'] ?? 'GET');
 
     if ($method === 'GET') {
@@ -448,6 +459,9 @@ try {
             };
         }
         $pdo->commit();
+        if ($action === 'input_create' && is_array($result) && $result['duplicate'] === false) {
+            notifyCoordinator($coordinatorWake);
+        }
         jsonResponse(['ok' => true, 'result' => is_array($result) ? $result : null], 201);
     }
 
@@ -463,6 +477,11 @@ try {
         throw new RuntimeException('Action administrateur inconnue.', 422);
     }
     $pdo->commit();
+    if ($action === 'resolve_decision'
+        || ($action === 'create_input' && is_array($result) && $result['duplicate'] === false)
+    ) {
+        notifyCoordinator($coordinatorWake);
+    }
     jsonResponse(['ok' => true, 'result' => is_array($result) ? $result : null]);
 } catch (JsonException) {
     if (isset($pdo) && $pdo->inTransaction()) {

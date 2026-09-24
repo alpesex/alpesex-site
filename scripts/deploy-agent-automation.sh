@@ -38,6 +38,8 @@ files=(
   server/public/api/admin/agents/oauth/index.php
   server/src/AgentCockpit/Gateway.php
   server/src/AgentCockpit/OAuth.php
+  server/src/AgentCockpit/CoordinatorWake.php
+  server/src/Mail/TransactionalMailer.php
   server/bin/archive-agent-test.php
   server/bin/revoke-agent-tokens.php
   server/migrations/017_agent_coordinator_gateway.sql
@@ -95,6 +97,8 @@ for file in "$backup/stage/backup-agent-database.php" \
   "$backup/stage/server/public/api/admin/agents/oauth/index.php" \
   "$backup/stage/server/src/AgentCockpit/Gateway.php" \
   "$backup/stage/server/src/AgentCockpit/OAuth.php" \
+  "$backup/stage/server/src/AgentCockpit/CoordinatorWake.php" \
+  "$backup/stage/server/src/Mail/TransactionalMailer.php" \
   "$backup/stage/server/bin/archive-agent-test.php" \
   "$backup/stage/server/bin/revoke-agent-tokens.php"; do
   php -l "$file" >/dev/null
@@ -109,10 +113,10 @@ if [ ! -x "$composer" ] || [ ! -d "$app_root/vendor/composer" ]; then
   echo 'Composer ou son autoload de production est absent.' >&2
   exit 1
 fi
-if ALPESEX_APP_DIR="$app_root" php -r '$services=require getenv("ALPESEX_APP_DIR")."/bootstrap.php"; if (($_ENV["ALPESEX_MCP_ENABLED"] ?? "") === "1") exit(1);'; then
+if ALPESEX_APP_DIR="$app_root" php -r '$services=require getenv("ALPESEX_APP_DIR")."/bootstrap.php"; if (($_ENV["ALPESEX_MCP_ENABLED"] ?? "") === "1" || (($_ENV["ALPESEX_COORDINATOR_WAKE_ENABLED"] ?? "") === "1")) exit(1);'; then
   :
 else
-  echo 'Passerelle déjà active : désactivation préalable requise.' >&2
+  echo 'Passerelle ou réveil automatique actif : désactivation préalable requise.' >&2
   exit 1
 fi
 cp -a "$app_root/vendor/composer" "$backup/composer"
@@ -155,7 +159,8 @@ install -d -m 0755 \
   "$public_root/api/admin/agents/oauth" \
   "$app_root/src/AgentCockpit"
 
-for file in server/src/AgentCockpit/Gateway.php server/src/AgentCockpit/OAuth.php; do
+for file in server/src/AgentCockpit/Gateway.php server/src/AgentCockpit/OAuth.php \
+  server/src/AgentCockpit/CoordinatorWake.php server/src/Mail/TransactionalMailer.php; do
   phase="publication de $file"
   destination=$(target "$file")
   mkdir -p "$(dirname "$destination")"
@@ -165,7 +170,7 @@ done
 phase='reconstruction de l’autoload Composer'
 (cd "$app_root" && "$composer" dump-autoload --no-dev --classmap-authoritative --no-interaction)
 phase='vérification du chargement des classes MCP'
-ALPESEX_APP_DIR="$app_root" php -r 'require getenv("ALPESEX_APP_DIR")."/vendor/autoload.php"; if (!class_exists("AlpesEx\\Portal\\AgentCockpit\\Gateway") || !class_exists("AlpesEx\\Portal\\AgentCockpit\\OAuth")) exit(1);'
+ALPESEX_APP_DIR="$app_root" php -r 'require getenv("ALPESEX_APP_DIR")."/vendor/autoload.php"; if (!class_exists("AlpesEx\\Portal\\AgentCockpit\\Gateway") || !class_exists("AlpesEx\\Portal\\AgentCockpit\\OAuth") || !class_exists("AlpesEx\\Portal\\AgentCockpit\\CoordinatorWake")) exit(1);'
 
 for file in "${files[@]}"; do
   case "$file" in

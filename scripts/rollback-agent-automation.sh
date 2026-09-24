@@ -21,10 +21,10 @@ fi
 
 app_root=/home/www/app
 public_root=/home/www/public
-if ALPESEX_APP_DIR="$app_root" php -r '$services=require getenv("ALPESEX_APP_DIR")."/bootstrap.php"; if (($_ENV["ALPESEX_MCP_ENABLED"] ?? "") === "1") exit(1);'; then
+if ALPESEX_APP_DIR="$app_root" php -r '$services=require getenv("ALPESEX_APP_DIR")."/bootstrap.php"; if (($_ENV["ALPESEX_MCP_ENABLED"] ?? "") === "1" || (($_ENV["ALPESEX_COORDINATOR_WAKE_ENABLED"] ?? "") === "1")) exit(1);'; then
   :
 else
-  echo 'Désactiver ALPESEX_MCP_ENABLED avant le retour arrière.' >&2
+  echo 'Désactiver la passerelle et le réveil automatique avant le retour arrière.' >&2
   exit 1
 fi
 
@@ -42,6 +42,8 @@ files=(
   server/public/api/admin/agents/oauth/index.php
   server/src/AgentCockpit/Gateway.php
   server/src/AgentCockpit/OAuth.php
+  server/src/AgentCockpit/CoordinatorWake.php
+  server/src/Mail/TransactionalMailer.php
   server/bin/archive-agent-test.php
   server/bin/revoke-agent-tokens.php
   server/migrations/017_agent_coordinator_gateway.sql

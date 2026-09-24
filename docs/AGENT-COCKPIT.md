@@ -84,6 +84,15 @@ les compétences et consigner les événements. Elle doit conserver tous les
 points d’arrêt humains et ne jamais traiter une décision `pending` comme un
 accord.
 
+Lorsque `ALPESEX_COORDINATOR_WAKE_ENABLED=1`, chaque nouvelle entrée non
+dupliquée et chaque décision résolue envoient un signal technique à la première
+adresse valide de `ALPESEX_COORDINATOR_WAKE_EMAIL` ou, à défaut, de
+`ALPESEX_ADMIN_EMAILS`. L’objet est exactement
+`[ALPES'Ex][COORDINATEUR] RELANCE`. Le message ne contient aucune donnée client,
+instruction ou autorisation : la tâche événementielle Gmail doit toujours relire
+la file authentifiée du Cockpit. Une panne SMTP est journalisée mais ne remet
+jamais en cause l’écriture déjà validée dans le Cockpit.
+
 Le POST historique avec le jeton serveur continue d’exister pour préserver
 les intégrations existantes. Il refuse désormais les transmissions directes
 entre métiers et les demandes de décision sans Coordinateur. Il ne doit pas
@@ -126,11 +135,13 @@ restauration ciblée de données.
 
 Pour publier ensuite la file d’entrée, exécuter d'abord
 `scripts/disable-agent-coordinator.sh` : il sauvegarde le fichier privé, remplace
-uniquement la variable d'activation et n'affiche aucune valeur sensible. Utiliser
+uniquement les variables d'activation de la passerelle et du réveil, et n'affiche
+aucune valeur sensible. Utiliser
 ensuite `scripts/deploy-agent-automation.sh` avec le SHA complet de la branche
 contrôlée. Le script sauvegarde les fichiers et la base, applique la migration 018
 et laisse la passerelle désactivée. Après les contrôles serveur, la réactiver avec
-`scripts/activate-agent-coordinator.sh`. Le retour arrière ciblé utilise
+`scripts/activate-agent-coordinator.sh`, qui réactive également le réveil Gmail.
+Le retour arrière ciblé utilise
 `scripts/rollback-agent-automation.sh` et le répertoire de sauvegarde imprimé ;
 la table additive `agent_inputs` reste conservée pour éviter toute perte de
 demande reçue.

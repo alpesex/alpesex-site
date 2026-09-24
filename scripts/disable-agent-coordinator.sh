@@ -32,9 +32,9 @@ import sys
 import tempfile
 
 path = Path(sys.argv[1])
-managed = re.compile(r'^\s*(?:export\s+)?ALPESEX_MCP_ENABLED\s*=')
+managed = re.compile(r'^\s*(?:export\s+)?(?:ALPESEX_MCP_ENABLED|ALPESEX_COORDINATOR_WAKE_ENABLED)\s*=')
 lines = [line for line in path.read_text().splitlines() if not managed.match(line)]
-lines.append('ALPESEX_MCP_ENABLED=0')
+lines.extend(('ALPESEX_MCP_ENABLED=0', 'ALPESEX_COORDINATOR_WAKE_ENABLED=0'))
 fd, temporary = tempfile.mkstemp(prefix='.env-agent-', dir=path.parent)
 try:
     os.fchmod(fd, 0o600)
@@ -46,7 +46,7 @@ finally:
         os.unlink(temporary)
 PY
 
-ALPESEX_APP_DIR="$app_root" php -r '$services=require getenv("ALPESEX_APP_DIR")."/bootstrap.php"; if (($_ENV["ALPESEX_MCP_ENABLED"] ?? "") === "1") exit(1);'
+ALPESEX_APP_DIR="$app_root" php -r '$services=require getenv("ALPESEX_APP_DIR")."/bootstrap.php"; if (($_ENV["ALPESEX_MCP_ENABLED"] ?? "") === "1" || (($_ENV["ALPESEX_COORDINATOR_WAKE_ENABLED"] ?? "") === "1")) exit(1);'
 
 trap - ERR
 echo 'PASSERELLE_DESACTIVEE'

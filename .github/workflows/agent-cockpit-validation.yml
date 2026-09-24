@@ -38,6 +38,8 @@ jobs:
         run: |
           php -l server/src/AgentCockpit/Gateway.php
           php -l server/src/AgentCockpit/OAuth.php
+          php -l server/src/AgentCockpit/CoordinatorWake.php
+          php -l server/src/Mail/TransactionalMailer.php
           php -l server/public/api/admin/agents/mcp/index.php
           php -l server/public/api/admin/agents/oauth/index.php
           php -l server/public/api/admin/agents/index.php
@@ -51,6 +53,7 @@ jobs:
           bash -n scripts/rollback-agent-coordinator.sh
           bash -n scripts/rollback-agent-automation.sh
           php server/tests/agent-cockpit-gateway.php
+          php server/tests/coordinator-wake.php
           node --check admin-agents/agents.js
           node admin-agents/tests/cockpit.smoke.mjs
       - name: Parcours HTTP OAuth et MCP local
