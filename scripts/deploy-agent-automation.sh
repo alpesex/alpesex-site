@@ -21,6 +21,7 @@ cd "$repository"
 git fetch origin feature/agent-cockpit-automation
 git cat-file -e "${revision}^{commit}"
 git merge-base --is-ancestor "$base" "$revision"
+previous=$(git rev-parse "${revision}^")
 
 backup=$(mktemp -d /home/www/backups/agent-automation-XXXXXXXX)
 chmod 700 "$backup"
@@ -60,14 +61,23 @@ for file in "${files[@]}"; do
   test -s "$backup/stage/$file"
   destination=$(target "$file")
   if [ -f "$destination" ]; then
-    if git cat-file -e "$base:$file" 2>/dev/null; then
-      git show "$base:$file" > "$backup/stage/expected"
-      if ! cmp -s "$backup/stage/expected" "$destination" && ! cmp -s "$backup/stage/$file" "$destination"; then
-        echo "Fichier de production inattendu : $destination" >&2
-        exit 1
+    known=false
+    if cmp -s "$backup/stage/$file" "$destination"; then
+      known=true
+    fi
+    for expected_revision in "$previous" "$base"; do
+      if [ "$known" = true ]; then
+        break
       fi
-    elif ! cmp -s "$backup/stage/$file" "$destination"; then
-      echo "Fichier ajouté localement en production : $destination" >&2
+      if git cat-file -e "$expected_revision:$file" 2>/dev/null; then
+        git show "$expected_revision:$file" > "$backup/stage/expected"
+        if cmp -s "$backup/stage/expected" "$destination"; then
+          known=true
+        fi
+      fi
+    done
+    if [ "$known" != true ]; then
+      echo "Fichier de production inattendu : $destination" >&2
       exit 1
     fi
     mkdir -p "$backup/previous/$(dirname "$file")"
