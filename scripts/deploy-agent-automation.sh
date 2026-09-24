@@ -21,7 +21,6 @@ cd "$repository"
 git fetch origin feature/agent-cockpit-automation
 git cat-file -e "${revision}^{commit}"
 git merge-base --is-ancestor "$base" "$revision"
-previous=$(git rev-parse "${revision}^")
 
 backup=$(mktemp -d /home/www/backups/agent-automation-XXXXXXXX)
 chmod 700 "$backup"
@@ -65,7 +64,10 @@ for file in "${files[@]}"; do
     if cmp -s "$backup/stage/$file" "$destination"; then
       known=true
     fi
-    for expected_revision in "$previous" "$base"; do
+    # Accept only a version that is already tracked in the reviewed ancestry.
+    # Production may legitimately be on any intermediate cockpit deployment,
+    # not necessarily the direct parent of the new GitHub commit.
+    for expected_revision in "$base" $(git rev-list "$base..$revision" -- "$file"); do
       if [ "$known" = true ]; then
         break
       fi
