@@ -102,4 +102,28 @@ const event = {
 assert.equal((await rpc('tools/call', { name: 'enregistrer_evenement', arguments: event })).result.structuredContent.duplicate, false);
 assert.equal((await rpc('tools/call', { name: 'enregistrer_evenement', arguments: event })).result.structuredContent.duplicate, true);
 assert.deepEqual((await rpc('tools/call', { name: 'lire_decisions', arguments: { dossierId: dossier } })).result.structuredContent.decisions, []);
+
+const decisionId = 'TEST-HTTP-DECISION';
+const publish = 'Publier le correctif';
+const postpone = 'Reporter la publication';
+assert.equal((await rpc('tools/call', { name: 'demander_decision', arguments: {
+  decisionId, dossierId: dossier, agentOrigine: 'web',
+  question: 'Publier ?', contexte: 'Correctif fictif prêt.',
+  options: [publish, postpone],
+  impacts: { [publish]: 'Correction publiée.', [postpone]: 'Défaut conservé.' },
+  recommandation: publish, urgence: 'normal', travailBloque: 'Publication.',
+} })).result.structuredContent.status, 'pending');
+const resolveDecision = await request('/api/admin/agents/', {
+  method: 'POST',
+  headers: { Cookie: cookie, 'Content-Type': 'application/json', 'X-CSRF-Token': cockpitState.csrf },
+  body: JSON.stringify({ action: 'resolve_decision', decisionId, choice: publish }),
+});
+assert.equal(resolveDecision.status, 200);
+const wakeInputs = (await rpc('tools/call', { name: 'lire_entrees', arguments: { limit: 10 } })).result.structuredContent.entrees;
+const wakeInput = wakeInputs.find(input => input.entreeId === `DEC-${decisionId}`);
+assert.ok(wakeInput, 'Une décision validée doit réveiller automatiquement le Coordinateur');
+assert.equal(wakeInput.source, 'decision');
+assert.equal(wakeInput.dossierId, dossier);
+assert.equal(wakeInput.payload.type, 'decision_resolved');
+assert.equal(wakeInput.payload.choice, publish);
 console.log('Cockpit HTTP OAuth/MCP integration: OK');

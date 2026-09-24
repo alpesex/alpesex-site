@@ -304,7 +304,7 @@ function resolveDecision(PDO $pdo, array $data, array $admin): void
 {
     $id = textField($data, 'decisionId', 64);
     $choice = textField($data, 'choice', 500);
-    $query = $pdo->prepare('SELECT dossier_id, requester_agent, options_json FROM agent_decisions WHERE id = :id AND status = \'pending\' FOR UPDATE');
+    $query = $pdo->prepare('SELECT dossier_id, requester_agent, options_json, urgency FROM agent_decisions WHERE id = :id AND status = \'pending\' FOR UPDATE');
     $query->execute(['id' => $id]);
     $decision = $query->fetch();
     if (!is_array($decision)) {
@@ -332,6 +332,27 @@ function resolveDecision(PDO $pdo, array $data, array $admin): void
         'summary' => "Décision {$id} validée par Lucas : {$choice}",
         'payload' => ['decisionId' => $id, 'choice' => $choice],
     ]);
+    $resumeInput = createInput($pdo, [
+        'inputId' => 'DEC-' . $id,
+        'source' => 'decision',
+        'externalReference' => $id,
+        'title' => 'Décision validée pour ' . $decision['dossier_id'],
+        'summary' => "Lucas a validé la décision {$id} : {$choice}. Reprendre automatiquement le dossier lié.",
+        'priority' => in_array($decision['urgency'], ['low', 'normal', 'high', 'critical'], true)
+            ? $decision['urgency']
+            : 'normal',
+        'payload' => [
+            'type' => 'decision_resolved',
+            'decisionId' => $id,
+            'dossierId' => $decision['dossier_id'],
+            'choice' => $choice,
+            'note' => textField($data, 'note', 1000, false),
+        ],
+    ]);
+    $linkInput = $pdo->prepare(
+        'UPDATE agent_inputs SET dossier_id = :dossier WHERE id = :input AND dossier_id IS NULL'
+    );
+    $linkInput->execute(['dossier' => $decision['dossier_id'], 'input' => $resumeInput['inputId']]);
 }
 
 function snapshot(PDO $pdo, array $admin): array

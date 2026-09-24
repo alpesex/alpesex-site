@@ -16,6 +16,8 @@ for (const id of ['agent-network', 'decision-list', 'journal-body', 'decision-di
 assert.match(html, /noindex,nofollow,noarchive/);
 assert.match(js, /credentials:'same-origin'/);
 assert.match(js, /X-CSRF-Token/);
+assert.match(js, /const form=event\.currentTarget,button=form\.querySelector/, 'Async form handlers must retain the submitted form before awaiting');
+assert.doesNotMatch(js, /await response\.json\(\)[\s\S]*event\.currentTarget\.reset\(\)/, 'Do not access event.currentTarget after an await');
 assert.ok(js.includes(`replace(/[&<>'"]/g`), 'Dynamic values must be escaped before rendering');
 assert.match(api, /hash_equals\(\$expected, \$provided\)/, 'Ingest token must use constant-time comparison');
 assert.match(api, /agent_cockpit_csrf/, 'Admin decisions must use a dedicated CSRF token');
