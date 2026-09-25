@@ -12,7 +12,13 @@
   <div class="shell">
     <header class="topbar">
       <a class="brand" href="../" aria-label="Retour à ALPES'Ex"><span class="brand-mark" aria-hidden="true"></span><span><strong>ALPES'Ex</strong><small>Cockpit des agents</small></span></a>
-      <div class="connection"><span class="live-dot" aria-hidden="true"></span><span id="sync-status">Connexion au Coordinateur…</span><button id="refresh" type="button">Actualiser</button></div>
+      <div class="connection">
+        <span class="live-dot" aria-hidden="true"></span>
+        <span id="sync-status">Connexion au Coordinateur…</span>
+        <button id="refresh" type="button">Actualiser</button>
+        <button id="wake-coordinator" class="wake-button" type="button">Relancer le Coordinateur</button>
+        <span id="wake-status" class="sr-only" role="status" aria-live="polite"></span>
+      </div>
     </header>
     <div class="page">
       <nav class="sidebar" aria-label="Navigation du cockpit">

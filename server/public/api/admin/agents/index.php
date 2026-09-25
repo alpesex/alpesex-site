@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use AlpesEx\Portal\Database;
 use AlpesEx\Portal\AgentCockpit\CoordinatorWake;
+use AlpesEx\Portal\Security\RateLimiter;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -467,6 +468,18 @@ try {
 
     $admin = requireAdmin($pdo);
     requireCsrf($admin['csrf']);
+    if ($action === 'wake_coordinator') {
+        (new RateLimiter($pdo))->assertAllowed(
+            'coordinator_wake',
+            $admin['email'] . '|' . (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'),
+            3,
+            300
+        );
+        if (!$coordinatorWake->notify()) {
+            throw new RuntimeException('Le réveil du Coordinateur n’est pas activé sur le serveur.', 503);
+        }
+        jsonResponse(['ok' => true, 'result' => ['sent' => true]]);
+    }
     $pdo->beginTransaction();
     $result = null;
     if ($action === 'resolve_decision') {
@@ -492,7 +505,9 @@ try {
     if (isset($pdo) && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    $status = $exception->getCode();
+    $status = str_starts_with($exception->getMessage(), 'Trop de tentatives')
+        ? 429
+        : $exception->getCode();
     jsonResponse(['message' => $exception->getMessage()], $status >= 400 && $status <= 599 ? $status : 400);
 } catch (Throwable $exception) {
     if (isset($pdo) && $pdo->inTransaction()) {

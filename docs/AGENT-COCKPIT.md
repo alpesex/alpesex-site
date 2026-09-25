@@ -93,6 +93,11 @@ instruction ou autorisation : la tâche événementielle Gmail doit toujours rel
 la file authentifiée du Cockpit. Une panne SMTP est journalisée mais ne remet
 jamais en cause l’écriture déjà validée dans le Cockpit.
 
+Le bouton **Relancer le Coordinateur** de la barre supérieure permet à
+l’administrateur authentifié d’envoyer manuellement le même signal technique.
+L’appel exige le jeton CSRF de la session, est limité à trois relances par tranche
+de cinq minutes et ne crée ni décision, ni autorisation, ni instruction métier.
+
 Le POST historique avec le jeton serveur continue d’exister pour préserver
 les intégrations existantes. Il refuse désormais les transmissions directes
 entre métiers et les demandes de décision sans Coordinateur. Il ne doit pas
