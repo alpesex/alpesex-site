@@ -31,7 +31,7 @@ $pdo = new PDO(
     (string) getenv('DB_USERNAME'), (string) getenv('DB_PASSWORD'),
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
 );
-foreach (['016_create_agent_cockpit.sql', '017_agent_coordinator_gateway.sql'] as $migration) {
+foreach (['016_create_agent_cockpit.sql', '017_agent_coordinator_gateway.sql', '018_agent_input_queue.sql'] as $migration) {
     $sql = file_get_contents(dirname(__DIR__) . '/migrations/' . $migration);
     foreach (preg_split('/;\s*(?:\r?\n|$)/', $sql) ?: [] as $statement) {
         if (trim($statement) !== '') {
@@ -39,14 +39,48 @@ foreach (['016_create_agent_cockpit.sql', '017_agent_coordinator_gateway.sql'] a
         }
     }
 }
-$pdo->exec('CREATE TABLE users (id BIGINT UNSIGNED PRIMARY KEY, email VARCHAR(190) NOT NULL, status VARCHAR(20) NOT NULL)');
-$pdo->exec("INSERT INTO users VALUES (1, 'alpes.ex.asm@gmail.com', 'active'), (2, 'client@example.test', 'active')");
+$pdo->exec(
+    'CREATE TABLE users (
+        id BIGINT UNSIGNED PRIMARY KEY,
+        email VARCHAR(190) NOT NULL,
+        first_name VARCHAR(100) NULL,
+        last_name VARCHAR(100) NULL,
+        status VARCHAR(20) NOT NULL
+    )'
+);
+$pdo->exec(
+    "INSERT INTO users (id, email, first_name, last_name, status) VALUES
+     (1, 'alpes.ex.asm@gmail.com', 'Lucas', 'Admin', 'active'),
+     (2, 'client@example.test', 'Client', 'Test', 'active')"
+);
 $_ENV['ALPESEX_ADMIN_EMAILS'] = 'alpes.ex.asm@gmail.com';
 $_ENV['ALPESEX_MCP_ENABLED'] = '1';
 $_ENV['ALPESEX_MCP_REDIRECT_URIS'] = 'https://chatgpt.com/connector_platform_oauth_redirect';
 
 $gateway = new Gateway($pdo);
 $gateway->dossier(['dossierId' => 'TEST-GATEWAY-LOCAL', 'title' => 'Fictif', 'status' => 'open', 'priority' => 'normal']);
+$insertInput = $pdo->prepare(
+    'INSERT INTO agent_inputs (id, source, external_reference, title, summary, priority)
+     VALUES (:id, :source, :reference, :title, :summary, :priority)'
+);
+$insertInput->execute([
+    'id' => 'TEST-INPUT-0001', 'source' => 'cockpit', 'reference' => 'test-0001',
+    'title' => 'Demande fictive', 'summary' => 'Contrôler la file automatique', 'priority' => 'high',
+]);
+$inputs = $gateway->inputs(['limit' => 10]);
+check(count($inputs['entrees']) === 1 && $inputs['entrees'][0]['entreeId'] === 'TEST-INPUT-0001', 'Entrée absente de la file.');
+check($gateway->processInput(['entreeId' => 'TEST-INPUT-0001', 'executionId' => 'test:run:0001', 'action' => 'prendre'])['duplicate'] === false, 'Prise en charge refusée.');
+check($gateway->processInput(['entreeId' => 'TEST-INPUT-0001', 'executionId' => 'test:run:0001', 'action' => 'prendre'])['duplicate'] === true, 'Prise en charge non idempotente.');
+rejects(static fn () => $gateway->processInput(['entreeId' => 'TEST-INPUT-0001', 'executionId' => 'test:run:0002', 'action' => 'prendre']), 409);
+check($gateway->processInput([
+    'entreeId' => 'TEST-INPUT-0001', 'executionId' => 'test:run:0001', 'action' => 'terminer',
+    'dossierId' => 'TEST-GATEWAY-LOCAL', 'note' => 'Dossier fictif créé',
+])['status'] === 'completed', 'Entrée non terminée.');
+check($gateway->processInput([
+    'entreeId' => 'TEST-INPUT-0001', 'executionId' => 'test:run:0001', 'action' => 'terminer',
+    'dossierId' => 'TEST-GATEWAY-LOCAL', 'note' => 'Dossier fictif créé',
+])['duplicate'] === true, 'Fin de traitement non idempotente.');
+rejects(static fn () => $gateway->processInput(['entreeId' => 'TEST-INPUT-0001', 'executionId' => 'test:run:0001', 'action' => 'remettre_en_attente']), 409);
 $event = [
     'eventId' => 'test:coordination:0001', 'dossierId' => 'TEST-GATEWAY-LOCAL',
     'agent' => 'satisfaction', 'destinataire' => 'coordination', 'type' => 'transmission',

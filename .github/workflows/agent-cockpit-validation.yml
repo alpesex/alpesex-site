@@ -1,10 +1,10 @@
 name: Agent cockpit validation (no deployment)
 on:
   push:
-    branches: [feature/agent-cockpit]
-    paths: ['admin-agents/**', 'server/**', 'scripts/deploy-agent-coordinator.sh', 'scripts/activate-agent-coordinator.sh', 'scripts/rollback-agent-coordinator.sh', '.well-known/**', '.github/workflows/agent-cockpit-validation.yml']
+    branches: [feature/agent-cockpit, feature/agent-cockpit-automation]
+    paths: ['admin-agents/**', 'server/**', 'scripts/deploy-agent-coordinator.sh', 'scripts/deploy-agent-automation.sh', 'scripts/activate-agent-coordinator.sh', 'scripts/disable-agent-coordinator.sh', 'scripts/rollback-agent-coordinator.sh', 'scripts/rollback-agent-automation.sh', '.well-known/**', '.github/workflows/agent-cockpit-validation.yml']
   pull_request:
-    paths: ['admin-agents/**', 'server/**', 'scripts/deploy-agent-coordinator.sh', 'scripts/activate-agent-coordinator.sh', 'scripts/rollback-agent-coordinator.sh', '.well-known/**', '.github/workflows/agent-cockpit-validation.yml']
+    paths: ['admin-agents/**', 'server/**', 'scripts/deploy-agent-coordinator.sh', 'scripts/deploy-agent-automation.sh', 'scripts/activate-agent-coordinator.sh', 'scripts/disable-agent-coordinator.sh', 'scripts/rollback-agent-coordinator.sh', 'scripts/rollback-agent-automation.sh', '.well-known/**', '.github/workflows/agent-cockpit-validation.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -38,6 +38,8 @@ jobs:
         run: |
           php -l server/src/AgentCockpit/Gateway.php
           php -l server/src/AgentCockpit/OAuth.php
+          php -l server/src/AgentCockpit/CoordinatorWake.php
+          php -l server/src/Mail/TransactionalMailer.php
           php -l server/public/api/admin/agents/mcp/index.php
           php -l server/public/api/admin/agents/oauth/index.php
           php -l server/public/api/admin/agents/index.php
@@ -45,9 +47,13 @@ jobs:
           php -l server/bin/revoke-agent-tokens.php
           php -l server/bin/backup-agent-database.php
           bash -n scripts/deploy-agent-coordinator.sh
+          bash -n scripts/deploy-agent-automation.sh
           bash -n scripts/activate-agent-coordinator.sh
+          bash -n scripts/disable-agent-coordinator.sh
           bash -n scripts/rollback-agent-coordinator.sh
+          bash -n scripts/rollback-agent-automation.sh
           php server/tests/agent-cockpit-gateway.php
+          php server/tests/coordinator-wake.php
           node --check admin-agents/agents.js
           node admin-agents/tests/cockpit.smoke.mjs
       - name: Parcours HTTP OAuth et MCP local

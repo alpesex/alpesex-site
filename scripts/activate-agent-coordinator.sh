@@ -39,9 +39,13 @@ import tempfile
 
 path = Path(sys.argv[1])
 redirect = sys.argv[2]
-managed = re.compile(r'^\s*(?:export\s+)?ALPESEX_MCP_(?:ENABLED|REDIRECT_URIS)\s*=')
+managed = re.compile(r'^\s*(?:export\s+)?(?:ALPESEX_MCP_(?:ENABLED|REDIRECT_URIS)|ALPESEX_COORDINATOR_WAKE_ENABLED)\s*=')
 lines = [line for line in path.read_text().splitlines() if not managed.match(line)]
-lines.extend((f'ALPESEX_MCP_REDIRECT_URIS={redirect}', 'ALPESEX_MCP_ENABLED=1'))
+lines.extend((
+    f'ALPESEX_MCP_REDIRECT_URIS={redirect}',
+    'ALPESEX_MCP_ENABLED=1',
+    'ALPESEX_COORDINATOR_WAKE_ENABLED=1',
+))
 fd, temporary = tempfile.mkstemp(prefix='.env-agent-', dir=path.parent)
 try:
     os.fchmod(fd, 0o600)
@@ -53,7 +57,7 @@ finally:
         os.unlink(temporary)
 PY
 
-ALPESEX_APP_DIR="$app_root" php -r '$services=require getenv("ALPESEX_APP_DIR")."/bootstrap.php"; if (!AlpesEx\Portal\AgentCockpit\OAuth::enabled() || !AlpesEx\Portal\AgentCockpit\OAuth::allowedRedirect("https://chatgpt.com/connector_platform_oauth_redirect")) exit(1);'
+ALPESEX_APP_DIR="$app_root" php -r '$services=require getenv("ALPESEX_APP_DIR")."/bootstrap.php"; if (!AlpesEx\Portal\AgentCockpit\OAuth::enabled() || !AlpesEx\Portal\AgentCockpit\OAuth::allowedRedirect("https://chatgpt.com/connector_platform_oauth_redirect") || (($_ENV["ALPESEX_COORDINATOR_WAKE_ENABLED"] ?? "") !== "1")) exit(1);'
 
 mcp_status=$(curl -q -sS --proto '=https' --max-time 20 -o /dev/null -w '%{http_code}' https://alpes-ex.fr/api/admin/agents/mcp/)
 oauth_status=$(curl -q -sS --proto '=https' --max-time 20 -o /dev/null -w '%{http_code}' 'https://alpes-ex.fr/api/admin/agents/oauth/?flow=token')

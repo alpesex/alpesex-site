@@ -262,4 +262,117 @@ final class Gateway
         $stmt->execute(['dossier' => $dossier]);
         return ['dossierId' => $dossier, 'decisions' => $stmt->fetchAll()];
     }
+
+    public function inputs(array $data): array
+    {
+        $limit = $data['limit'] ?? 20;
+        $includeProcessing = $data['inclureEnCours'] ?? false;
+        if (!is_int($limit) || $limit < 1 || $limit > 50) {
+            throw new RuntimeException('Limite d’entrées invalide.', 422);
+        }
+        if (!is_bool($includeProcessing)) {
+            throw new RuntimeException('Filtre d’entrées invalide.', 422);
+        }
+        $where = $includeProcessing ? "status IN ('pending', 'processing')" : "status = 'pending'";
+        $stmt = $this->pdo->prepare(
+            "SELECT id AS entreeId, source, external_reference AS referenceExterne, title AS titre,
+                    summary AS resume, payload_json AS payload, priority AS priorite, status,
+                    dossier_id AS dossierId, created_at AS creeeLe, claimed_at AS priseLe
+             FROM agent_inputs
+             WHERE {$where}
+             ORDER BY FIELD(priority, 'critical', 'high', 'normal', 'low'), created_at, id
+             LIMIT :limit"
+        );
+        $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        $inputs = $stmt->fetchAll();
+        foreach ($inputs as &$input) {
+            $input['payload'] = $input['payload'] === null
+                ? null
+                : json_decode((string) $input['payload'], true, 32, JSON_THROW_ON_ERROR);
+        }
+        unset($input);
+        return ['entrees' => $inputs];
+    }
+
+    public function processInput(array $data): array
+    {
+        $id = self::field($data, 'entreeId', 80);
+        $execution = self::field($data, 'executionId', 80);
+        if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{5,79}$/D', $execution)) {
+            throw new RuntimeException('Identifiant d’exécution invalide.', 422);
+        }
+        $action = self::field($data, 'action', 30);
+        if (!in_array($action, ['prendre', 'terminer', 'rejeter', 'remettre_en_attente'], true)) {
+            throw new RuntimeException('Action d’entrée invalide.', 422);
+        }
+        $dossier = self::field($data, 'dossierId', 64, false);
+        $note = self::field($data, 'note', 500, false);
+
+        $this->pdo->beginTransaction();
+        try {
+            $query = $this->pdo->prepare('SELECT status, claim_key, dossier_id, result_note FROM agent_inputs WHERE id=:id FOR UPDATE');
+            $query->execute(['id' => $id]);
+            $input = $query->fetch();
+            if (!is_array($input)) {
+                throw new RuntimeException('Entrée inconnue.', 404);
+            }
+            if ($dossier !== null) {
+                $dossierQuery = $this->pdo->prepare('SELECT 1 FROM agent_dossiers WHERE id=:id');
+                $dossierQuery->execute(['id' => $dossier]);
+                if ($dossierQuery->fetchColumn() === false) {
+                    throw new RuntimeException('Dossier lié inconnu.', 422);
+                }
+            }
+
+            $current = (string) $input['status'];
+            $owner = $input['claim_key'];
+            $target = match ($action) {
+                'prendre' => 'processing',
+                'terminer' => 'completed',
+                'rejeter' => 'rejected',
+                'remettre_en_attente' => 'pending',
+            };
+            $allowed = match ($action) {
+                'prendre' => $current === 'pending',
+                'terminer', 'rejeter', 'remettre_en_attente' => $current === 'processing' && $owner === $execution,
+            };
+            if (!$allowed) {
+                $sameFinal = in_array($target, ['completed', 'rejected'], true)
+                    && $current === $target
+                    && ($dossier === null || $input['dossier_id'] === $dossier)
+                    && ($note === null || $input['result_note'] === $note);
+                $sameExecution = $owner === $execution;
+                if (($sameFinal && $sameExecution) || ($action === 'prendre' && $current === 'processing' && $sameExecution)) {
+                    $this->pdo->commit();
+                    return ['entreeId' => $id, 'status' => $current, 'duplicate' => true];
+                }
+                throw new RuntimeException('Transition d’entrée interdite.', 409);
+            }
+
+            $stmt = $this->pdo->prepare(
+                'UPDATE agent_inputs SET status=:new_status,
+                    claim_key=CASE WHEN :claim_status = \'processing\' THEN :execution
+                                   WHEN :reset_status = \'pending\' THEN NULL ELSE claim_key END,
+                    dossier_id=COALESCE(:dossier, dossier_id), result_note=:note,
+                    claimed_at=CASE WHEN :claim_time_status = \'processing\' THEN COALESCE(claimed_at, CURRENT_TIMESTAMP)
+                                    WHEN :reset_time_status = \'pending\' THEN NULL ELSE claimed_at END,
+                    completed_at=CASE WHEN :final_status IN (\'completed\', \'rejected\') THEN CURRENT_TIMESTAMP ELSE NULL END
+                 WHERE id=:id'
+            );
+            $stmt->execute([
+                'new_status' => $target, 'claim_status' => $target, 'reset_status' => $target,
+                'claim_time_status' => $target, 'reset_time_status' => $target, 'final_status' => $target,
+                'execution' => $execution,
+                'dossier' => $dossier, 'note' => $note, 'id' => $id,
+            ]);
+            $this->pdo->commit();
+            return ['entreeId' => $id, 'status' => $target, 'duplicate' => false];
+        } catch (\Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
+    }
 }

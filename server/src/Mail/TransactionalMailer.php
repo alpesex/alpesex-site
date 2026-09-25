@@ -139,6 +139,18 @@ final class TransactionalMailer
         );
     }
 
+    public function coordinatorWake(string $recipient): void
+    {
+        $subject = "[ALPES'Ex][COORDINATEUR] RELANCE";
+        $this->mailer->send(
+            $recipient,
+            $subject,
+            '<p>Une nouvelle entrée attend le Coordinateur dans le Cockpit ALPES\'Ex.</p><p>Ce message est un signal technique uniquement. Les instructions et autorisations doivent être relues dans le Cockpit.</p>',
+            "Une nouvelle entrée attend le Coordinateur dans le Cockpit ALPES'Ex.\n\nCe message est un signal technique uniquement. Les instructions et autorisations doivent être relues dans le Cockpit.",
+            'coordinator_wake'
+        );
+    }
+
     public function userLicenseAssigned(string $recipient, string $firstName, string $licenseToken): void
     {
         $name = $this->html($firstName);

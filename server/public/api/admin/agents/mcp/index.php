@@ -83,6 +83,17 @@ function tools(): array
         tool('lire_decisions', 'Use this when the Coordinator needs the current decision state for one dossier. A pending state never means approval.', [
             'dossierId' => stringProperty('Existing dossier identifier.'),
         ], ['dossierId'], true),
+        tool('lire_entrees', 'Use this only as Coordinator to inspect pending or already claimed inputs. Reading never approves or completes an input.', [
+            'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 20],
+            'inclureEnCours' => ['type' => 'boolean', 'default' => false, 'description' => 'Include inputs already claimed by a run.'],
+        ], [], true),
+        tool('traiter_entree', 'Use this only as Coordinator to claim, complete, reject or requeue one input. Claim before starting work.', [
+            'entreeId' => stringProperty('Stable input identifier.'),
+            'executionId' => stringProperty('Stable identifier for this scheduled or interactive run.'),
+            'action' => ['type' => 'string', 'enum' => ['prendre', 'terminer', 'rejeter', 'remettre_en_attente']],
+            'dossierId' => stringProperty('Dossier created or linked for this input.'),
+            'note' => stringProperty('Short processing result or reason.'),
+        ], ['entreeId', 'executionId', 'action'], false),
     ];
 }
 
@@ -134,7 +145,7 @@ try {
         rpc($id, ['result' => [
             'protocolVersion' => $version,
             'capabilities' => ['tools' => ['listChanged' => false]],
-            'serverInfo' => ['name' => 'alpesex-coordinateur', 'version' => '1.0.0'],
+            'serverInfo' => ['name' => 'alpesex-coordinateur', 'version' => '1.1.0'],
             'instructions' => 'Outils réservés au Coordinateur. Les agents métier transmettent leurs résultats au Coordinateur ; ne leur déléguez jamais ces outils. Aucun silence de Lucas ne vaut approbation.',
         ]]);
     }
@@ -158,6 +169,8 @@ try {
         'enregistrer_evenement' => $gateway->event($arguments),
         'demander_decision' => $gateway->decision($arguments),
         'lire_decisions' => $gateway->decisions($arguments),
+        'lire_entrees' => $gateway->inputs($arguments),
+        'traiter_entree' => $gateway->processInput($arguments),
         default => null,
     };
     if ($result === null) {
