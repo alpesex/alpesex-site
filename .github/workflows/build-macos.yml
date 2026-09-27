@@ -34,6 +34,21 @@ jobs:
       - name: Construire le DMG universel
         working-directory: desktop
         run: npm run dist:mac
+      - name: Tester le paquet macOS final
+        working-directory: desktop
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="dist/mac-universal/CPMP ASM.app"
+          binary="$app/Contents/MacOS/CPMP ASM"
+          test -x "$binary"
+          "$binary" --smoke-test
+          architectures="$(lipo -archs "$binary")"
+          [[ "$architectures" == *arm64* ]]
+          [[ "$architectures" == *x86_64* ]]
+          [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist")" == "fr.alpesex.cpmpasm" ]]
+          [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Contents/Info.plist")" == "6.0.2.1" ]]
+          hdiutil verify "dist/CPMP-ASM-V6.0.2.1-macOS-universal.dmg"
       - name: Publier les artefacts de recette
         uses: actions/upload-artifact@v4
         with:
