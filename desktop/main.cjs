@@ -1,15 +1,22 @@
 const {app, BrowserWindow, session, ipcMain, dialog, shell} = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
+const fsSync = require('node:fs');
 const os = require('node:os');
 const crypto = require('node:crypto');
 const {execFile} = require('node:child_process');
 const {promisify} = require('node:util');
+const {assertDocumentSize} = require('./document-policy.cjs');
 const execFileAsync = promisify(execFile);
 const origin = 'https://alpes-ex.fr';
 const smoke = process.argv.includes('--smoke-test');
 // Keep the validated V5.4.18 profile so its existing portfolio can be migrated.
-app.setPath('userData', path.join(app.getPath('appData'), 'cpmp-asm'));
+const smokeUserData = smoke ? fsSync.mkdtempSync(path.join(os.tmpdir(), 'cpmp-asm-smoke-')) : null;
+app.setPath('userData', smokeUserData || path.join(app.getPath('appData'), 'cpmp-asm'));
+app.once('will-quit', () => {
+  const expectedPrefix = path.join(os.tmpdir(), 'cpmp-asm-smoke-');
+  if (smokeUserData?.startsWith(expectedPrefix)) fsSync.rmSync(smokeUserData, {recursive:true, force:true});
+});
 let win, legacyProjectsJson = null;
 async function readLegacyProjects(ses) {
   const reader = new BrowserWindow({show:false,webPreferences:{session:ses,sandbox:true,contextIsolation:true,nodeIntegration:false}});
@@ -25,19 +32,28 @@ function allowedSender(event) {
       event.senderFrame.url !== origin + '/application/') throw new Error('Accès refusé');
 }
 function filename(value) { return path.basename(String(value || 'document')).replace(/[<>:"/\\|?*\x00-\x1f]/g, '_'); }
-async function windowsDeviceIdentity() {
-  let machineGuid = '';
-  try {
-    const {stdout} = await execFileAsync('reg.exe', ['query', 'HKLM\\SOFTWARE\\Microsoft\\Cryptography', '/v', 'MachineGuid'], {windowsHide:true});
-    machineGuid = String(stdout).match(/MachineGuid\s+REG_SZ\s+([^\r\n]+)/i)?.[1]?.trim().toLowerCase() || '';
-  } catch {}
+async function deviceIdentity() {
+  let systemIdentifier = '';
+  if (process.platform === 'win32') {
+    try {
+      const {stdout} = await execFileAsync('reg.exe', ['query', 'HKLM\\SOFTWARE\\Microsoft\\Cryptography', '/v', 'MachineGuid'], {windowsHide:true});
+      systemIdentifier = String(stdout).match(/MachineGuid\s+REG_SZ\s+([^\r\n]+)/i)?.[1]?.trim().toLowerCase() || '';
+    } catch {}
+  } else if (process.platform === 'darwin') {
+    try {
+      const {stdout} = await execFileAsync('/usr/sbin/ioreg', ['-rd1', '-c', 'IOPlatformExpertDevice']);
+      systemIdentifier = String(stdout).match(/"IOPlatformUUID"\s*=\s*"([^"]+)"/i)?.[1]?.trim().toLowerCase() || '';
+    } catch {}
+  }
   const macs = Object.values(os.networkInterfaces()).flat().filter(item => item && !item.internal && item.mac && item.mac !== '00:00:00:00:00:00')
     .map(item => item.mac.toLowerCase()).sort();
   // MachineGuid survives application reinstalls and avoids treating Wi-Fi and
   // Ethernet as two computers. Physical MAC addresses are the fallback only.
-  const material = machineGuid || [...new Set(macs)].join('|');
+  const material = systemIdentifier || [...new Set(macs)].join('|');
   if (!material) return null;
-  return {identifier:crypto.createHash('sha256').update('alpesex-cpmp-windows|' + material).digest('hex'), name:`${os.hostname()} — Windows`};
+  const platform = process.platform === 'darwin' ? 'macOS' : process.platform === 'win32' ? 'Windows' : process.platform;
+  const namespace = process.platform === 'win32' ? 'alpesex-cpmp-windows|' : `alpesex-cpmp-${process.platform}|`;
+  return {identifier:crypto.createHash('sha256').update(namespace + material).digest('hex'), name:`${os.hostname()} — ${platform}`};
 }
 app.whenReady().then(async () => {
   const ses = smoke ? session.fromPartition('smoke-test') : session.defaultSession;
@@ -69,7 +85,7 @@ app.whenReady().then(async () => {
   win.webContents.on('will-navigate', (event, url) => {if (url !== origin + '/application/') event.preventDefault();});
   win.webContents.on('will-attach-webview', event => event.preventDefault());
   ipcMain.handle('cpmp:account', async event => {allowedSender(event);await shell.openExternal(origin + '/compte/');});
-  ipcMain.handle('cpmp:device-identity', async event => {allowedSender(event);return windowsDeviceIdentity();});
+  ipcMain.handle('cpmp:device-identity', async event => {allowedSender(event);return deviceIdentity();});
   ipcMain.handle('cpmp:export', async (event, payload) => {
     allowedSender(event);
     const {canceled,filePath} = await dialog.showSaveDialog(win, {defaultPath:filename(payload.name), filters:[{name:'Projet CPMP',extensions:['json']}]});
@@ -82,7 +98,7 @@ app.whenReady().then(async () => {
     const response = await ses.fetch(url.href,{credentials:'include',bypassCustomProtocolHandlers:true,redirect:'error'});
     if (!response.ok) throw new Error('Document inaccessible');
     const bytes = Buffer.from(await response.arrayBuffer());
-    if (bytes.length > 1024*1024) throw new Error('Document trop volumineux');
+    assertDocumentSize(bytes.length);
     const {canceled,filePath} = await dialog.showSaveDialog(win, {defaultPath:filename(payload.name)});
     if (!canceled) await fs.writeFile(filePath,bytes);
   });
@@ -97,11 +113,13 @@ app.whenReady().then(async () => {
       base.newProjectOpened=currentMode==='admin'&&document.getElementById('newProjectModal').classList.contains('open')===false;
       return base;
     })()`);
-    if (result.platform !== 'windows' || result.deviceIdentity !== 'function' || result.bridge !== 'function' || result.queue !== 'function' || !result.form || result.node !== 'undefined' || !result.newProjectModal || !result.newProjectSaved || !result.newProjectOpened) throw new Error(JSON.stringify(result));
-    console.log('Windows shared UI, new project flow, bridge, isolated preload and sandbox: OK');
+    const expectedPlatform = process.platform === 'darwin' ? 'macos' : process.platform === 'win32' ? 'windows' : process.platform;
+    if (result.platform !== expectedPlatform || result.deviceIdentity !== 'function' || result.bridge !== 'function' || result.queue !== 'function' || !result.form || result.node !== 'undefined' || !result.newProjectModal || !result.newProjectSaved || !result.newProjectOpened) throw new Error(JSON.stringify(result));
+    console.log(`${platformLabel()} shared UI, new project flow, bridge, isolated preload and sandbox: OK`);
     app.exit(0);
   }
 }).catch(error => {console.error(error);app.exit(1);});
+function platformLabel() { return process.platform === 'darwin' ? 'macOS' : process.platform === 'win32' ? 'Windows' : process.platform; }
 // Destroying the temporary legacy reader must not quit the application before
 // the main window has been created.
 app.on('window-all-closed', () => { if (win) app.quit(); });

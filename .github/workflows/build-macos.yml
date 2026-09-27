@@ -1,0 +1,45 @@
+name: Build CPMP ASM macOS
+
+on:
+  push:
+    branches:
+      - codex/macos-installer-web-option
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-macos:
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - name: Installer les dépendances
+        working-directory: desktop
+        run: npm ci
+      - name: Tester le socle multi-plateforme
+        working-directory: desktop
+        run: node --test tests/document-policy.test.cjs tests/desktop-cross-platform.test.cjs tests/release-surface.test.cjs
+      - name: Tester le runtime macOS
+        working-directory: desktop
+        run: npm run smoke
+      - name: Construire le DMG universel
+        working-directory: desktop
+        run: npm run dist:mac
+      - name: Publier les artefacts de recette
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpmp-asm-macos-v6.0.2.1
+          path: |
+            desktop/dist/*.dmg
+            desktop/dist/*macOS-universal.zip
+          if-no-files-found: error
+          retention-days: 30

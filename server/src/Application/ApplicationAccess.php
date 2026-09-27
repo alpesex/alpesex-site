@@ -54,9 +54,10 @@ final class ApplicationAccess
         if (!preg_match('/^[a-f0-9]{64}$/', $deviceIdentifier)) {
             throw new RuntimeException('DEVICE_INVALID', 422);
         }
-        if (!in_array($platform, ['web', 'ios', 'android', 'windows'], true)) {
+        if (!in_array($platform, ['web', 'ios', 'android', 'windows', 'macos'], true)) {
             throw new RuntimeException('DEVICE_INVALID', 422);
         }
+        $fallbackDeviceName = $platform === 'macos' ? 'Mac' : ($platform === 'windows' ? 'PC Windows' : 'Mobile / tablette');
         $this->pdo->beginTransaction();
         try {
             $license = $this->pdo->prepare(
@@ -93,7 +94,7 @@ final class ApplicationAccess
                     $migrate = $this->pdo->prepare(
                         'UPDATE application_devices SET device_identifier=:device_identifier,device_name=:device_name,platform=:platform,last_seen_at=UTC_TIMESTAMP() WHERE id=:id'
                     );
-                    $migrate->execute(['device_identifier' => $deviceIdentifier, 'device_name' => mb_substr(trim($deviceName) ?: 'PC Windows', 0, 190), 'platform' => $platform, 'id' => $device['id']]);
+                    $migrate->execute(['device_identifier' => $deviceIdentifier, 'device_name' => mb_substr(trim($deviceName) ?: $fallbackDeviceName, 0, 190), 'platform' => $platform, 'id' => $device['id']]);
                 }
             }
             if (is_array($device) && $device['status'] === 'revoked') {
@@ -124,11 +125,11 @@ final class ApplicationAccess
                 $insert->execute([
                     'organization_id' => $user['organizationId'], 'user_id' => $user['id'],
                     'license_id' => $row['id'], 'device_identifier' => $deviceIdentifier, 'platform' => $platform,
-                    'device_name' => mb_substr(trim($deviceName) ?: 'Mobile / tablette', 0, 190),
+                    'device_name' => mb_substr(trim($deviceName) ?: $fallbackDeviceName, 0, 190),
                 ]);
             } else {
                 $touch = $this->pdo->prepare('UPDATE application_devices SET last_seen_at=UTC_TIMESTAMP(),device_name=:device_name,platform=:platform WHERE id=:id');
-                $touch->execute(['device_name' => mb_substr(trim($deviceName) ?: 'Mobile / tablette', 0, 190), 'platform' => $platform, 'id' => $device['id']]);
+                $touch->execute(['device_name' => mb_substr(trim($deviceName) ?: $fallbackDeviceName, 0, 190), 'platform' => $platform, 'id' => $device['id']]);
             }
             $this->pdo->commit();
         } catch (\Throwable $exception) {

@@ -4,7 +4,7 @@ if (legacyProjects && localStorage.getItem('alpesex.application.account') === nu
   localStorage.setItem('pcasm_pro_projects', legacyProjects);
 }
 contextBridge.exposeInMainWorld('cpmpNative', {
-  origin: 'https://alpes-ex.fr', platform: 'windows',
+  origin: 'https://alpes-ex.fr', platform: process.platform === 'darwin' ? 'macos' : process.platform === 'win32' ? 'windows' : process.platform,
   deviceIdentity: () => ipcRenderer.invoke('cpmp:device-identity'),
   openAccount: () => ipcRenderer.invoke('cpmp:account'),
   exportJson: (data, name) => ipcRenderer.invoke('cpmp:export', {data, name}),

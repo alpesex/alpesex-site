@@ -12,6 +12,7 @@
   const hadLegacyPortfolio = localStorage.getItem('pcasm_pro_projects') !== null;
   let currentSession = null;
   let projectCache = [];
+  let backupCache = new Map();
 
   function errorText(code, body = {}) {
     if (code === 'DEVICE_ALREADY_CONNECTED') {
@@ -28,7 +29,11 @@
       PROJECT_DELETED: 'Ce projet a été supprimé sur un autre appareil.',
       PROJECT_NOT_FOUND: 'Ce projet n’est plus accessible.',
       PROJECT_CONFLICT: 'Le projet a été modifié sur un autre appareil. Rechargez les données.',
-      DOCUMENT_TOO_LARGE: 'Le document dépasse la limite de 1 Mo.',
+      DOCUMENT_TOO_LARGE: 'Le document dépasse la limite de 20 Mo.',
+      TRANSFER_COOLDOWN: 'Ce projet a déjà été transféré durant les sept derniers jours.',
+      TRANSFER_RECIPIENT_INVALID: 'Choisissez un destinataire de votre entreprise disposant d’une licence active.',
+      DOCUMENT_QUOTA_EXCEEDED: 'Le quota du propriétaire est dépassé : 2 Go ou 1 000 documents.',
+      FORBIDDEN: 'Vous ne disposez pas des droits nécessaires.',
       DOCUMENT_NOT_FOUND: 'Ce document n’est pas accessible sur le Cloud.',
       APPLICATION_UNAVAILABLE: 'L’application ALPES’Ex est momentanément indisponible.'
     })[code] || code || 'Opération impossible.';
@@ -130,7 +135,7 @@
       const canonical = group.reduce((best, item) => isFresher(item, best) ? item : best);
       const duplicates = group.filter(item => item.id !== canonical.id);
       // A duplicate containing documents is never removed automatically.
-      if (duplicates.some(item => item.hasDocuments)) {
+      if (group.some(item => item.transferred) || duplicates.some(item => item.hasDocuments)) {
         cleaned.push(...group);
         continue;
       }
@@ -200,6 +205,7 @@
         if (project?.meta?.portfolioId) queue.stage(project, 0);
       }
       projectCache = [];
+      backupCache.clear();
       const effectiveRole = activated.activation.role || activated.user.role;
       return { company: 'Organisation ASM', manager: activated.user.email, email: activated.user.email, role: effectiveRole, mode: effectiveRole === 'direction' ? 'viewer' : 'manager', offline: false, mustChangePassword: false };
     },
@@ -209,6 +215,7 @@
     verifyPassword(password) { return request(API + '?action=verify-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) }); },
     async session() { return currentSession; },
     async logout() {
+      backupCache.clear();
       await request(API + '?action=device-disconnect', { method: 'POST' }).catch(() => null);
       await request(AUTH + 'logout/', { method: 'POST' }).catch(() => null);
       currentSession = null; projectCache = [];
@@ -235,6 +242,20 @@
     discardDraft(id) { queue.remove(id); },
     async list() { return { projects: await projects() }; },
     acceptSnapshot(items) { items.forEach(item => saveRevision(item.localId, item.revision)); },
+    cached() { return projectCache.map(item => ({...item})); },
+    async recipients(project) {
+      const item = await cloudProject(project);
+      return request(API+'?action=transfer-recipients&projectId='+encodeURIComponent(item.id));
+    },
+    async transfer(project, recipientId) {
+      const localId = project.meta.portfolioId;
+      await this.save(project);
+      const item = await cloudProject(project);
+      const result = await request(API+'?action=project-transfer', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({projectId:item.id, recipientId, revision:revisions()[localId]})});
+      clearProjectState([localId]); backupCache.clear();
+      projectCache = projectCache.filter(row=>row.localId!==localId);
+      return result;
+    },
     async remove(project) {
       const localId = String(project?.meta?.portfolioId || '');
       if (queue.running.has(localId)) await queue.flush(localId);
@@ -284,9 +305,13 @@
         document.body.appendChild(input); input.click();
       });
       if (!file) return { canceled: true };
-      if (file.size > 1024 * 1024) throw new Error('Le document dépasse la limite de 1 Mo.');
+      if (file.size > 20 * 1024 * 1024) throw new Error('Le document dépasse la limite de 20 Mo.');
       const form = new FormData(); form.append('projectId', item.id); form.append('ref', payload.document.ref); form.append('family', payload.document.family || ''); form.append('file', file);
       return request(API + '?action=document-upload', { method: 'POST', body: form });
+    },
+    async remove(payload) {
+      const item = await cloudProject(payload.project);
+      return request(API+'?action=document-delete', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({projectId:item.id,ref:payload.document.ref})});
     },
     async open(payload) {
       const item = await cloudProject(payload.project);
@@ -299,14 +324,18 @@
 
   window.erpAsmBackups = {
     async list() {
+      backupCache.clear();
       const list = await projects();
+      backupCache = new Map(list.map(item => [String(item.id), JSON.parse(JSON.stringify(item))]));
       return { backups: list.map(item => ({ id: item.id, name: 'Sauvegarde_' + item.name, manager: item.ownerEmail, category: 'Projet Cloud', project: item.name, modifiedAt: item.updatedAt })) };
     },
     async load(id) {
-      const item = (await projects()).find(project => project.id === id);
+      const item = backupCache.get(String(id));
       if (!item) throw new Error('Sauvegarde introuvable.');
       saveRevision(item.localId, item.revision);
-      return { data: item.data };
+      const data = JSON.parse(JSON.stringify(item.data));
+      data.meta = {...data.meta, portfolioId: item.localId || data.meta?.portfolioId, cloudId: item.id, cloudAccess: item.access, ownerEmail: item.ownerEmail || ''};
+      return { data };
     },
     async save(payload) {
       // Project publication already persists the central snapshot. Do not write it twice.

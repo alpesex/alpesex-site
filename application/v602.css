@@ -1,0 +1,14 @@
+.shell{height:100dvh;min-height:0;grid-template-rows:auto minmax(0,1fr)}
+.shellbar{padding:10px 18px;gap:10px;align-items:center;border-bottom-width:2px}
+.shellbar .brand{flex:1 1 520px;min-width:0;gap:10px}.shellbar .mark{flex:0 0 34px;width:34px;height:34px}
+.asm-header-copy{min-width:0}.asm-header-eyebrow{font-size:10px;font-weight:650;letter-spacing:.08em;color:#d5e0e5}
+#asmProjectTitle{font-size:19px;line-height:1.25;margin:3px 0;font-weight:750;color:white;overflow-wrap:anywhere}
+#asmProjectMeta{font-size:11px;line-height:1.4;margin:0;color:#dbe4e8;overflow-wrap:anywhere}
+#asmProjectMeta:empty{display:none}#modeLabel{display:none!important}
+.shell-actions{flex:0 1 auto;gap:5px;justify-content:flex-end}.shell-actions button{padding:6px 9px;font-size:11px;line-height:1.3;min-height:30px;border-radius:7px}
+.content{min-height:0;overflow:hidden}.content>iframe{position:absolute;inset:0;width:100%;height:100%;min-height:0}
+.dc-context-header{display:none!important}.dc-native>.asm-page-nav{display:flex!important;position:sticky;top:0;z-index:50;flex-wrap:nowrap;gap:5px;margin:0;padding:8px 16px;background:#f3f6f8;border:0;border-bottom:1px solid #d6e0e6;border-radius:0;overflow-x:auto;box-sizing:border-box}
+.dc-native>.asm-page-nav button{flex:0 0 auto;font-size:12px;line-height:1.3;padding:7px 11px;min-height:30px;border:1px solid #cbd8df;border-radius:7px;background:white;color:#244655;white-space:nowrap}
+.dc-native>.asm-page-nav button.active{background:#244655;color:white;border-color:#244655}
+@media(max-width:900px){.shellbar{display:flex;flex-wrap:wrap;padding:8px 10px;gap:7px}.shellbar .brand{flex-basis:100%;width:100%;min-width:0}.shell-actions{width:100%;flex-basis:100%;justify-content:flex-start;gap:4px}.shell-actions button{font-size:10px;padding:5px 7px;min-height:29px}#asmProjectTitle{font-size:16px}#asmProjectMeta{font-size:10px}.asm-header-eyebrow{font-size:9px}.dc-native>.asm-page-nav{padding:6px 8px}.dc-native>.asm-page-nav button{font-size:11px;padding:7px 9px}}
+@media print{.shell-actions,.asm-page-nav{display:none!important}}

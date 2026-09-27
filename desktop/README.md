@@ -33,7 +33,7 @@ file de synchronisation avant le premier téléchargement IONOS.
    écritures sont automatiques : utiliser uniquement des projets de recette.
 5. Les métadonnées documentaires sont dans le JSON ; **les fichiers eux-mêmes ne
    sont pas migrés par l'import**. Les transférer explicitement après inventaire,
-   vérifier leurs empreintes et respecter la limite de 1 Mo par document.
+   vérifier leurs empreintes et respecter la limite de 20 Mo par document.
 6. Comparer les résultats sur les trois plateformes avant toute migration réelle.
 
 Le retour reste possible à partir de la copie du profil et de l'export JSON de

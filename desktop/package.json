@@ -1,24 +1,27 @@
 {
-  "name": "cpmp-asm-windows",
-  "version": "6.0.0",
+  "name": "cpmp-asm-desktop",
+  "version": "6.0.2-1",
   "private": true,
-  "description": "CPMP ASM V6.0.0 — Windows et Cloud ALPES'Ex",
+  "description": "CPMP ASM V6.0.2.1 — Windows et Cloud ALPES'Ex",
   "author": "ALPES'Ex",
   "main": "main.cjs",
   "scripts": {
     "build": "node scripts/build.mjs",
     "start": "npm run build && electron .",
     "dist": "npm run build && electron-builder --win nsis --x64 --publish never",
+    "dist:mac": "npm run build && electron-builder --mac dmg zip --universal --publish never",
     "smoke": "npm run build && electron . --smoke-test"
   },
   "devDependencies": {"electron": "44.4.3", "electron-builder": "26.15.3"},
   "build": {
     "appId": "fr.alpesex.cpmpasm",
+    "buildVersion": "6.0.2.1",
     "productName": "CPMP ASM",
     "asar": true,
-    "files": ["main.cjs", "preload.cjs", "legacy-reader.html", "www/**/*", "package.json"],
-    "win": {"target": "nsis", "icon": "../assets/favicon.ico", "signAndEditExecutable": true},
+    "files": ["main.cjs", "preload.cjs", "document-policy.cjs", "legacy-reader.html", "www/**/*", "package.json"],
+    "win": {"target": "nsis", "icon": "../assets/favicon.ico", "signAndEditExecutable": true, "artifactName": "CPMP-ASM-Setup-V6.0.2.1-x64.${ext}"},
+    "mac": {"target": ["dmg", "zip"], "category": "public.app-category.business", "icon": "../assets/icon-512.png", "artifactName": "CPMP-ASM-V6.0.2.1-macOS-universal.${ext}", "identity": null},
     "nsis": {"oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": false, "installerIcon": "../assets/favicon.ico", "uninstallerIcon": "../assets/favicon.ico", "createDesktopShortcut": true, "createStartMenuShortcut": true},
-    "artifactName": "CPMP-ASM-Setup-V6.0.0-x64.${ext}"
+    "artifactName": "CPMP-ASM-V6.0.2.1-${os}-${arch}.${ext}"
   }
 }
